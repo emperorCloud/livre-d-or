@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Optionnel : thème / tokens */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --color-background: #ffffff;
+  --color-foreground: #1c1917;
+}
+
+/* Base légère (optionnel) */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* ========== PRINT (ton code, un peu rangé) ========== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #1c1917 !important;
+    font-size: 12pt;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  nav,
+  header,
+  footer,
+  #espace-temoignages,
+  .no-print,
+  button,
+  .modal-backdrop,
+  .fixed:not(#printable-book-container) {
+    display: none !important;
+  }
+
+  #printable-book-container {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-page {
+    page-break-after: always;
+    break-after: page;
+    min-height: 297mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-cover-page {
+    page-break-after: always;
+    break-after: page;
+    min-height: 297mm;
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

@@ -1,14 +1,15 @@
+import "./globals.css";
 import type { Metadata } from 'next';
-import './globals.css';
+
 
 export const metadata: Metadata = {
   title: "Livre d'Or - Jean-Michel Edimo",
   description:
-    "Livre d'or et espace d'hommage numérique pour le départ en retraite de M. Jean-Michel Edimo.",
+    "Livre d'or et espace d'hommage numérique pour le départ à la retraite de M. Jean-Michel Edimo.",
   openGraph: {
     title: "Livre d'Or - Jean-Michel Edimo",
     description:
-      "Livre d'or et espace d'hommage numérique pour le départ en retraite de M. Jean-Michel Edimo.",
+      "Livre d'or et espace d'hommage numérique pour le départ à la retraite de M. Jean-Michel Edimo.",
     type: 'website',
   },
   twitter: {

@@ -197,7 +197,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   required
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="Entrez le mot de passe (edimo2026)"
+                  placeholder="Entrez le mot de passe"
                   className="w-full px-4 py-3 rounded-xl bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-center text-lg font-mono focus:ring-2 focus:ring-amber-500"
                 />
               </div>
