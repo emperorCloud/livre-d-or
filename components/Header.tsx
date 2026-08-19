@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenWriter, onOpenVIP, totalCo
           <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
           <span>Livre d'Or & Hommage Numérique</span>
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-          <span>Départ en Retraite</span>
+          <span>Départ à la Retraite</span>
         </motion.div>
 
         {/* Main Title Header */}
@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenWriter, onOpenVIP, totalCo
           className="text-xl sm:text-2xl lg:text-3xl font-medium text-amber-200/95 mb-3 flex items-center justify-center gap-3 flex-wrap"
         >
           <Award className="w-7 h-7 text-amber-400 inline-block" />
-          <span>Départ en Retraite de M. Jean-Michel Edimo</span>
+          <span>Départ à la Retraite de M. Jean-Michel Edimo</span>
         </motion.div>
 
         {/* Date & Gratitude Tagline */}
