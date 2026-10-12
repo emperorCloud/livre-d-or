@@ -8,7 +8,7 @@ import { TeamTribute } from '@/components/TeamTribute';
 import { TestimonialsWall } from '@/components/TestimonialsWall';
 import { GuestDashboardModal } from '@/components/GuestDashboardModal';
 import { AdminDashboardModal } from '@/components/AdminDashboardModal';
-import { JeanMichelVIPModal } from '@/components/JeanMichelVIPModal';
+import { JeanMichelVIPModal } from '@/components/VIPModal';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { Footer } from '@/components/Footer';
 

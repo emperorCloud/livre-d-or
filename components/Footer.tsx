@@ -27,7 +27,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onOpenVIP }) => {
             onClick={onOpenVIP}
             className="hover:text-amber-300 transition-colors underline decoration-amber-500/40"
           >
-            Album VIP Jean-Michel
+            Album VIP
           </button>
           <span>·</span>
           <button
@@ -40,7 +40,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onOpenVIP }) => {
         </div>
 
         <p className="text-[11px] text-amber-400/50">
-          Réalisé avec bienveillance par ses collègues et amis © 2026
+          Réalisé avec bienveillance par CARDITEVENTS © 2026
         </p>
       </div>
     </footer>

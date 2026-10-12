@@ -1,5 +1,7 @@
 import { sql } from '@vercel/postgres';
+import { randomUUID } from 'crypto';
 import type { GuestEntry, GuestPhoto, EntryFormData, AdminStats } from './types';
+import { sanitizeBlobUrl } from './themePresets';
 
 const DEFAULT_REACTIONS = { '❤️': 0, '🥂': 0, '👏': 0, '🎉': 0, '🌟': 0 };
 
@@ -7,6 +9,7 @@ function rowToEntry(row: any, photos: GuestPhoto[]): GuestEntry {
   const primaryPhoto = photos[0];
   return {
     id: row.id,
+    groupId: row.group_id || undefined,
     token: row.token,
     firstName: row.first_name,
     lastName: row.last_name,
@@ -33,12 +36,12 @@ async function getPhotosForEntries(entryIds: string[]): Promise<Map<string, Gues
   const map = new Map<string, GuestPhoto[]>();
   if (entryIds.length === 0) return map;
   const { rows } = await sql.query(
-    `SELECT id, entry_id, url, caption FROM entry_photos WHERE entry_id = ANY($1::text[]) ORDER BY position ASC`,
+    `SELECT id, entry_id, url, thumb_url, width, height, caption FROM entry_photos WHERE entry_id = ANY($1::text[]) ORDER BY position ASC`,
     [entryIds]
   );
   for (const r of rows) {
     const list = map.get(r.entry_id) || [];
-    list.push({ id: r.id, url: r.url, caption: r.caption || '' });
+    list.push({ id: r.id, url: r.url, thumbUrl: r.thumb_url || '', width: r.width ?? undefined, height: r.height ?? undefined, caption: r.caption || '' });
     map.set(r.entry_id, list);
   }
   return map;
@@ -47,6 +50,14 @@ async function getPhotosForEntries(entryIds: string[]): Promise<Map<string, Gues
 export async function getAllEntries(): Promise<GuestEntry[]> {
   const { rows } = await sql`
     SELECT * FROM entries ORDER BY is_pinned DESC, created_at DESC
+  `;
+  const photosMap = await getPhotosForEntries(rows.map((r) => r.id));
+  return rows.map((r) => rowToEntry(r, photosMap.get(r.id) || []));
+}
+
+export async function getEntriesByGroup(groupId: string): Promise<GuestEntry[]> {
+  const { rows } = await sql`
+    SELECT * FROM entries WHERE group_id = ${groupId} ORDER BY is_pinned DESC, created_at DESC
   `;
   const photosMap = await getPhotosForEntries(rows.map((r) => r.id));
   return rows.map((r) => rowToEntry(r, photosMap.get(r.id) || []));
@@ -79,22 +90,22 @@ async function replacePhotos(entryId: string, photos: GuestPhoto[]) {
     if (!p.url) continue;
     const photoId = p.id || `photo-${entryId}-${i}-${Date.now()}`;
     await sql`
-      INSERT INTO entry_photos (id, entry_id, url, caption, position)
-      VALUES (${photoId}, ${entryId}, ${p.url}, ${p.caption || ''}, ${i})
+      INSERT INTO entry_photos (id, entry_id, url, thumb_url, width, height, caption, position)
+      VALUES (${photoId}, ${entryId}, ${p.url}, ${p.thumbUrl || ''}, ${p.width ?? null}, ${p.height ?? null}, ${p.caption || ''}, ${i})
     `;
   }
 }
 
-export async function createEntry(data: EntryFormData): Promise<GuestEntry> {
+export async function createEntry(data: EntryFormData, groupId: string): Promise<GuestEntry> {
   const id = 'entry-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-  const token = 'guest-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now();
+  const token = 'guest-' + randomUUID();
 
   await sql`
     INSERT INTO entries (
-      id, token, first_name, last_name, email, relationship, years_known,
+      id, group_id, token, first_name, last_name, email, relationship, years_known,
       message, anecdote, wish, card_style, likes_count, is_pinned, is_approved, reactions
     ) VALUES (
-      ${id}, ${token}, ${data.firstName}, ${data.lastName}, ${data.email || ''},
+      ${id}, ${groupId}, ${token}, ${data.firstName}, ${data.lastName}, ${data.email || ''},
       ${data.relationship || 'Collègue'}, ${data.yearsKnown || ''},
       ${data.message}, ${data.anecdote || ''}, ${data.wish || ''},
       ${data.cardStyle || 'polaroid'}, 0, false, true, ${JSON.stringify(DEFAULT_REACTIONS)}
@@ -139,10 +150,21 @@ export async function updateEntryByToken(token: string, data: EntryFormData): Pr
 
 function normalizePhotos(data: EntryFormData): GuestPhoto[] {
   if (Array.isArray(data.photos) && data.photos.length > 0) {
-    return data.photos.filter((p) => p && typeof p.url === 'string' && p.url.trim() !== '');
+    return data.photos
+      .filter((p) => p && typeof p.url === 'string')
+      .map((p) => ({
+        ...p,
+        url: sanitizeBlobUrl(p.url),
+        thumbUrl: sanitizeBlobUrl(p.thumbUrl || ''),
+        width: Number.isInteger(p.width) && p.width! > 0 && p.width! < 20000 ? p.width : undefined,
+        height: Number.isInteger(p.height) && p.height! > 0 && p.height! < 20000 ? p.height : undefined,
+        caption: (p.caption || '').slice(0, 200),
+      }))
+      .filter((p) => p.url !== '')
+      .slice(0, 6);
   }
-  if (data.photoUrl && data.photoUrl.trim() !== '') {
-    return [{ url: data.photoUrl, caption: data.photoCaption || '' }];
+  if (data.photoUrl && sanitizeBlobUrl(data.photoUrl) !== '') {
+    return [{ url: sanitizeBlobUrl(data.photoUrl), caption: (data.photoCaption || '').slice(0, 200) }];
   }
   return [];
 }
@@ -153,20 +175,16 @@ export async function deleteEntryByToken(token: string): Promise<boolean> {
 }
 
 export async function addReaction(id: string, emoji: string): Promise<{ reactions: Record<string, number>; likesCount: number } | null> {
-  const entry = await getEntryById(id);
-  if (!entry) return null;
-
-  const reactions = { ...(entry.reactions || DEFAULT_REACTIONS) };
-  const key = emoji && reactions.hasOwnProperty(emoji) ? emoji : '❤️';
-  reactions[key] = (reactions[key] || 0) + 1;
-  const likesCount = (entry.likesCount || 0) + 1;
-
-  await sql`
-    UPDATE entries SET reactions = ${JSON.stringify(reactions)}, likes_count = ${likesCount}
-    WHERE id = ${id}
+  const key = Object.prototype.hasOwnProperty.call(DEFAULT_REACTIONS, emoji) ? emoji : '❤️';
+  const { rows } = await sql`
+    UPDATE entries SET
+      reactions = jsonb_set(reactions, ARRAY[${key}]::text[], to_jsonb(COALESCE((reactions->>${key})::int, 0) + 1)),
+      likes_count = likes_count + 1
+    WHERE id = ${id} AND is_approved = true
+    RETURNING reactions, likes_count
   `;
-
-  return { reactions, likesCount };
+  if (!rows[0]) return null;
+  return { reactions: rows[0].reactions, likesCount: rows[0].likes_count };
 }
 
 export async function adminUpdateEntry(id: string, patch: Partial<GuestEntry>): Promise<GuestEntry | null> {
