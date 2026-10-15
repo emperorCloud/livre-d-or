@@ -1,80 +1,42 @@
 'use client';
+import { LogIn, LogOut, Shield, Users } from 'lucide-react';
+import type { AuthRole } from '@/lib/types';
+import type { SiteSettings } from '@/lib/siteSettings';
 
-import React from 'react';
-import { Award, Heart, ShieldCheck, BookmarkCheck, User, Plus } from 'lucide-react';
+interface Props { settings: SiteSettings; role: AuthRole; managerLabel?: string; onLogin?: () => void; onLogout?: () => void; onBrand?: () => void }
 
-interface NavbarProps {
-  onOpenWriter: () => void;
-  onOpenGuestDashboard: () => void;
-  onOpenAdmin: () => void;
-  onOpenVIP: () => void;
-  guestToken: string | null;
-  hasAdminToken: boolean;
+export default function Navbar({ settings, role, managerLabel, onLogin, onLogout, onBrand }: Props) {
+  const initials = settings.brandName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <header className="sticky top-0 z-40 bg-stone-900 text-stone-100 border-b border-stone-800 shadow-md no-print">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-6 h-16">
+        <button onClick={onBrand} className="flex items-center gap-3 font-serif-cinzel font-bold tracking-widest text-lg text-amber-100 hover:text-white transition-colors shrink-0">
+          <span className="w-8 h-8 rounded-lg bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-300 text-sm">{initials}</span>
+          <span className="truncate max-w-[40vw] sm:max-w-none uppercase">{settings.brandName}</span>
+        </button>
+
+        <div className="hidden md:flex items-center text-xs text-stone-400">
+          {role === 'admin' && <Badge icon={<Shield className="w-3.5 h-3.5 text-amber-400" />}>Tableau de bord Administrateur</Badge>}
+          {role === 'manager' && <Badge icon={<Users className="w-3.5 h-3.5 text-amber-400" />}>Espace Responsable{managerLabel ? ` · ${managerLabel}` : ''}</Badge>}
+          {role === 'none' && <span className="italic">{settings.brandTagline}</span>}
+        </div>
+
+        {onLogin || onLogout ? (
+          role === 'none' ? (
+            <button onClick={onLogin} className="px-4 py-2 text-xs font-semibold text-stone-950 bg-amber-200 hover:bg-amber-100 rounded-xl transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+              <LogIn className="w-3.5 h-3.5" /><span>{settings.loginLabel}</span>
+            </button>
+          ) : (
+            <button onClick={onLogout} className="px-3.5 py-1.5 text-xs font-medium text-stone-300 hover:text-white bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl transition-all flex items-center gap-1.5">
+              <LogOut className="w-3.5 h-3.5" /><span>Déconnexion</span>
+            </button>
+          )
+        ) : <span />}
+      </div>
+    </header>
+  );
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
-  onOpenWriter,
-  onOpenGuestDashboard,
-  onOpenAdmin,
-  onOpenVIP,
-  guestToken,
-  hasAdminToken,
-}) => {
-  return (
-    <nav className="sticky top-0 z-40 bg-stone-900/90 border-b border-amber-600/30 backdrop-blur-md text-amber-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand logo */}
-        <a href="#" className="flex items-center gap-2.5 font-serif font-bold text-base sm:text-lg text-amber-100 hover:text-amber-300 transition-colors">
-          <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40">
-            <Award className="w-5 h-5" />
-          </span>
-          <span className="truncate">Livre d'Or — J.M. Edimo</span>
-        </a>
-
-        {/* Action controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={onOpenWriter}
-            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Ajouter mon message</span>
-            <span className="sm:hidden">Écrire</span>
-          </button>
-
-          {guestToken && (
-            <button
-              onClick={onOpenGuestDashboard}
-              className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-amber-500/40 text-amber-200 text-xs font-medium transition-colors flex items-center gap-1"
-              title="Mon Espace Invité"
-            >
-              <User className="w-4 h-4 text-amber-400" />
-              <span className="hidden md:inline">Mon Espace</span>
-            </button>
-          )}
-
-          <button
-            onClick={onOpenVIP}
-            className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-amber-500/30 text-amber-300 text-xs font-medium transition-colors hidden sm:flex items-center gap-1"
-            title="Album Hommage Jean-Michel"
-          >
-            <BookmarkCheck className="w-4 h-4 text-amber-400" />
-            <span className="hidden lg:inline">Mode Album</span>
-          </button>
-
-          <button
-            onClick={onOpenAdmin}
-            className={`p-2 rounded-xl border transition-colors ${
-              hasAdminToken
-                ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                : 'bg-stone-800 hover:bg-stone-700 border-stone-700 text-stone-300'
-            }`}
-            title="Dashboard Administrateur"
-          >
-            <ShieldCheck className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-};
+function Badge({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return <span className="flex items-center gap-1.5 text-amber-200 bg-stone-800/80 px-3 py-1 rounded-full border border-stone-700">{icon}<span>{children}</span></span>;
+}

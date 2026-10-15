@@ -50,6 +50,7 @@ export function buildTheme(type: CeremonyType, patch: Partial<ThemeConfig> = {})
   if (typeof patch.coverImage === 'string') t.coverImage = sanitizeBlobUrl(patch.coverImage);
   if (typeof patch.coverQuote === 'string') t.coverQuote = patch.coverQuote.slice(0, 400);
   if (typeof patch.coverQuoteAuthor === 'string') t.coverQuoteAuthor = patch.coverQuoteAuthor.slice(0, 120);
+  if (typeof patch.footerText === 'string') t.footerText = patch.footerText.slice(0, 200);
   return t;
 }
 

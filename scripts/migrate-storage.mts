@@ -1,23 +1,17 @@
 // Migration Vercel Blob -> Cloudflare R2, sans toucher au code de l'application.
 //
 //   1. Créer le bucket R2 + un domaine public + une clé API (voir MIGRATION.md), renseigner R2_* dans .env.local
-//   2. node --env-file=.env.local --experimental-strip-types scripts/migrate-storage.mts --dry-run
-//   3. node --env-file=.env.local --experimental-strip-types scripts/migrate-storage.mts
+//   2. npm run migrate:storage -- --dry-run
+//   3. npm run migrate:storage
 //   4. Mettre STORAGE_DRIVER=r2 dans Vercel, redéployer, vérifier le site et un PDF.
 //
 // Le script COPIE (il ne supprime rien dans Blob) et peut être relancé : un objet déjà présent dans R2 est ignoré.
 import { sql } from '@vercel/postgres';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { r2Exists, putObject, r2PublicUrl } from '../lib/storage/r2';
 
 const dry = process.argv.includes('--dry-run');
 const need = (n: string) => { const v = process.env[n]; if (!v) { console.error(`Variable manquante : ${n}`); process.exit(1); } return v; };
-const bucket = need('R2_BUCKET');
-const publicBase = need('R2_PUBLIC_URL').replace(/\/$/, '');
-const s3 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${need('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
-  credentials: { accessKeyId: need('R2_ACCESS_KEY_ID'), secretAccessKey: need('R2_SECRET_ACCESS_KEY') },
-});
+for (const n of ['R2_BUCKET', 'R2_PUBLIC_URL', 'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY']) need(n);
 need('POSTGRES_URL');
 
 const isBlob = (u: string) => { try { return new URL(u).hostname.endsWith('.public.blob.vercel-storage.com'); } catch { return false; } };
@@ -28,19 +22,13 @@ async function migrate(url: string): Promise<string | null> {
   if (!url || !isBlob(url)) return null;
   if (cache.has(url)) return cache.get(url)!;
   const key = decodeURIComponent(new URL(url).pathname.replace(/^\//, ''));
-  const next = `${publicBase}/${key}`;
+  const next = r2PublicUrl(key);
   try {
-    let exists = true;
-    try { await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key })); } catch { exists = false; }
-    if (exists) skipped++;
+    if (await r2Exists(key)) skipped++;
     else if (!dry) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`téléchargement ${res.status}`);
-      await s3.send(new PutObjectCommand({
-        Bucket: bucket, Key: key, Body: Buffer.from(await res.arrayBuffer()),
-        ContentType: res.headers.get('content-type') || 'image/jpeg',
-        CacheControl: 'public, max-age=31536000, immutable',
-      }));
+      await putObject(key, new Uint8Array(await res.arrayBuffer()), res.headers.get('content-type') || 'image/jpeg');
       copied++;
     } else copied++;
     cache.set(url, next);

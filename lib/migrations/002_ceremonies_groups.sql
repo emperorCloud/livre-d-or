@@ -48,19 +48,17 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   count INTEGER NOT NULL DEFAULT 0
 );
 
--- Reprise de l'existant : cérémonie + groupe par défaut pour Jean-Michel Edimo.
--- Le responsable de ce groupe n'a pas de code tant que l'admin n'en génère pas un
--- (bouton "Réinitialiser le code" ou POST /api/groups/{id}/reset-code).
+-- Reprise de l'existant : une cérémonie + un groupe NEUTRES reçoivent les témoignages déjà enregistrés.
+-- L'administrateur renseigne ensuite le titre, le nom du concerné, les dates, etc. depuis son tableau de bord.
+-- Le responsable de ce groupe n'a pas de code tant que l'admin n'en génère pas un (« Réinitialiser le code »).
 INSERT INTO ceremonies (id, type, title, subtitle, honoree_name, theme)
-VALUES (
-  'ceremony-legacy-jean-michel', 'retraite',
-  'Hommage à Jean-Michel Edimo', 'Livre d''or de départ à la retraite',
-  'Jean-Michel Edimo', '{}'::jsonb
-) ON CONFLICT (id) DO NOTHING;
+SELECT 'ceremony-existing', 'retraite', 'Livre d''or existant', '', 'À renseigner', '{}'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM ceremonies);
 
 INSERT INTO groups (id, ceremony_id, name, manager_name)
-VALUES ('group-legacy-jean-michel', 'ceremony-legacy-jean-michel', 'Tous les invités', 'Administrateur')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'group-existing', c.id, 'Tous les invités', ''
+FROM (SELECT id FROM ceremonies ORDER BY created_at ASC LIMIT 1) c
+WHERE NOT EXISTS (SELECT 1 FROM groups);
 
--- Rejouable : rattache tout témoignage orphelin (ex. posté pendant le déploiement)
-UPDATE entries SET group_id = 'group-legacy-jean-michel' WHERE group_id IS NULL;
+-- Rejouable : rattache tout témoignage orphelin au premier groupe
+UPDATE entries SET group_id = (SELECT id FROM groups ORDER BY created_at ASC LIMIT 1) WHERE group_id IS NULL;

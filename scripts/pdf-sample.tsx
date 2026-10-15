@@ -47,8 +47,8 @@ const entries: BookEntry[] = [
 ];
 
 const data = (draft: boolean, known: Map<string, number>, written: Map<string, number>): BookData => ({
-  title: "LIVRE D'OR DU DÉPART À LA RETRAITE", recipient: 'Monsieur Jean-Michel Edimo', subtitle: 'Recueil officiel des témoignages et vœux d’amitié',
-  eventDate: 'Août 2026', preface: 'Une carrière remarquable se mesure aux liens profonds et aux rires partagés.', closing: 'Que cette nouvelle vie vous apporte santé et sérénité.',
+  title: "LIVRE D'OR DU DÉPART À LA RETRAITE", recipient: 'Monsieur Paul Exemple', subtitle: 'Recueil officiel des témoignages et vœux d’amitié',
+  eventDate: 'Août 2026', preface: 'Une carrière remarquable se mesure aux liens profonds et aux rires partagés.', closing: 'Que cette nouvelle vie vous apporte santé et sérénité.', closingTitle: '', closingSignature: '— De la part de tous vos amis',
   wishLabel: 'Vœux pour la retraite', palette: PALETTES.royal_navy, entries, cover: null, draft, keepEmoji: true, known, written,
   fonts: { reg: { fontFamily: 'Times-Roman' }, ital: { fontFamily: 'Times-Italic' }, bold: { fontFamily: 'Times-Bold' }, head: { fontFamily: 'Times-Bold' }, embedded: false },
 });

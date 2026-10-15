@@ -8,15 +8,13 @@ import { fetchImageBlob, measureBlob, renderJpegDataUrl, mapPool } from './image
 import { setupFonts, registerEmoji } from './fonts';
 import type { BookData, BookEntry, BookPhoto } from './BookDocument';
 
-const DEFAULT_PREFACE =
-  'Une carrière remarquable ne se mesure pas seulement aux projets et succès accomplis, mais aux liens profonds, aux rires partagés et à l’inspiration transmise au quotidien. Ce recueil rassemble les mots sincères, anecdotes complices et vœux chaleureux de tous ceux qui ont eu l’immense privilège de partager ce chemin à vos côtés.';
-const DEFAULT_CLOSING = 'Que cette nouvelle vie vous apporte santé, sérénité, voyages et mille bonheurs entouré de vos proches.';
+const DEFAULT_CLOSING = 'Merci à toutes et à tous pour vos messages et vos souvenirs.';
 
 export async function generateBook(entries: GuestEntry[], options: PdfBookOptions): Promise<Blob> {
   const {
     theme = 'royal_navy', bookTitle, recipientName, dedicationSubtitle, eventDate, includePhotos = true,
-    imageQuality = 'print', prefaceText = DEFAULT_PREFACE, closingMessage = DEFAULT_CLOSING,
-    wishLabel = 'Vœux pour la retraite', coverPhotoUrl, onProgress,
+    imageQuality = 'print', prefaceText = '', closingMessage = DEFAULT_CLOSING, closingTitle, closingSignature = '',
+    wishLabel = 'Vœux', coverPhotoUrl, onProgress,
   } = options;
   const say = (p: number, s: string) => onProgress?.(p, s);
   const dpi = imageQuality === 'screen' ? 130 : 200;
@@ -87,7 +85,7 @@ export async function generateBook(entries: GuestEntry[], options: PdfBookOption
   // 5. Deux passes : la 1re (sans images, rapide) mesure la page de chaque témoignage pour le sommaire.
   const base = {
     title: bookTitle, recipient: recipientName, subtitle: dedicationSubtitle, eventDate, preface: prefaceText,
-    closing: closingMessage, wishLabel, palette: PALETTES[theme] ?? PALETTES.royal_navy, fonts, entries: bookEntries, cover,
+    closing: closingMessage, closingTitle: closingTitle ?? '', closingSignature, wishLabel, palette: PALETTES[theme] ?? PALETTES.royal_navy, fonts, entries: bookEntries, cover,
   };
   const render = async (data: BookData) => pdf(React.createElement(BookDocument, { data }) as any).toBlob();
 

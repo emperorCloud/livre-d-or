@@ -10,7 +10,7 @@ export interface BookEntry {
   message: string; anecdote: string; wish: string; rows: BookPhoto[][]; photoCount: number;
 }
 export interface BookData {
-  title: string; recipient: string; subtitle: string; eventDate: string; preface: string; closing: string;
+  title: string; recipient: string; subtitle: string; eventDate: string; preface: string; closing: string; closingTitle: string; closingSignature: string;
   wishLabel: string; palette: Palette; fonts: FontSet; entries: BookEntry[];
   cover: { src: string; width: number; height: number } | null;
   draft: boolean;                         // passe 1 : mêmes cadres, sans images (calcul des numéros de page)
@@ -151,9 +151,9 @@ export function BookDocument({ data: d }: { data: BookData }) {
       {/* Mot de la fin */}
       <Page size="A4" style={page}>
         <View style={{ marginTop: 250, width: CONTENT_W, borderWidth: 2, borderColor: p.gold, borderRadius: 10, backgroundColor: p.boxBg, padding: 28, alignItems: 'center' }}>
-          <Text style={{ ...f.head, fontSize: 18, color: p.accent, textAlign: 'center' }}>{`Merci pour tout, ${cleanText(d.recipient.replace(/^(monsieur|madame|m\.|mme)\s+/i, ''), false).split(' ')[0]} !`}</Text>
+          <Text style={{ ...f.head, fontSize: 18, color: p.accent, textAlign: 'center' }}>{d.closingTitle || `Merci pour tout, ${cleanText(d.recipient.replace(/^(monsieur|madame|m\.|mme)\s+/i, ''), false).split(' ')[0]} !`}</Text>
           <Text style={{ ...f.ital, fontSize: 13, lineHeight: 1.5, color: p.ink, textAlign: 'center', marginTop: 12 }}>{'« ' + cleanText(d.closing, d.keepEmoji) + ' »'}</Text>
-          <Text style={{ ...f.bold, fontSize: 10.5, color: p.accent, marginTop: 12 }}>— De la part de tous vos collègues, collaborateurs et amis</Text>
+          {d.closingSignature ? <Text style={{ ...f.bold, fontSize: 10.5, color: p.accent, marginTop: 12 }}>{d.closingSignature}</Text> : null}
         </View>
       </Page>
     </Document>

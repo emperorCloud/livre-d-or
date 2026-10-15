@@ -97,6 +97,7 @@ export interface ThemeConfig {
   coverImage: string;
   coverQuote: string;
   coverQuoteAuthor?: string;
+  footerText?: string; // pied de page de la page invité de cette cérémonie (géré par l'admin)
   symbol: CeremonySymbol;
   borderStyle: 'classic' | 'minimal' | 'ornate' | 'modern';
 }

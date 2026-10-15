@@ -13,6 +13,8 @@ export interface PdfBookOptions {
   prefaceText?: string;
   closingMessage?: string;
   wishLabel?: string;                // « Vœux pour la retraite », « Vœux de bonheur »…
+  closingTitle?: string;             // titre de la page finale (défaut : « Merci pour tout, <prénom> ! »)
+  closingSignature?: string;         // ligne de signature de la page finale (vide = aucune)
   coverPhotoUrl?: string;            // photo du concerné pour la couverture
 }
 

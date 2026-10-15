@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllEntries, getEntriesByGroup, getEntriesByToken, createEntry, updateEntryByToken, getEntryByToken } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { getGroupIdBySlug, getLegacyGroupAccess } from '@/lib/ceremonies';
+import { getGroupIdBySlug } from '@/lib/ceremonies';
 import { rateLimit, clientIp } from '@/lib/ratelimit';
 import { cleanEntry } from '@/lib/validate';
 
 const NO_CACHE = { 'Cache-Control': 'no-cache, no-store, must-revalidate' };
-// TRANSITION (voir api/upload) : à supprimer avec la nouvelle interface.
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -44,10 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trop de messages envoyés, réessayez plus tard.' }, { status: 429 });
   }
 
-  let group = typeof body.inviteSlug === 'string' && body.inviteSlug ? await getGroupIdBySlug(body.inviteSlug) : null;
-  if (!group && !body.inviteSlug) {
-    group = await getLegacyGroupAccess(); // TRANSITION
-  }
+  const group = typeof body.inviteSlug === 'string' && body.inviteSlug ? await getGroupIdBySlug(body.inviteSlug) : null;
   if (!group) return NextResponse.json({ error: "Lien d'invitation invalide." }, { status: 400 });
   if (group.isClosed) return NextResponse.json({ error: "Ce livre d'or est clos : il n'accepte plus de messages." }, { status: 403 });
   if (!group.allowPhotos) { data.photos = []; data.photoUrl = ''; }

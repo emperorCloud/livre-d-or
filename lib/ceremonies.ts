@@ -36,6 +36,11 @@ export async function listCeremonies(): Promise<{ ceremonies: Ceremony[]; groups
   return { ceremonies: c.map(rowToCeremony), groups: g.map(rowToGroup) };
 }
 
+export async function getCeremonyById(id: string): Promise<Ceremony | null> {
+  const { rows } = await sql`SELECT * FROM ceremonies WHERE id = ${id}`;
+  return rows[0] ? rowToCeremony(rows[0]) : null;
+}
+
 export async function createCeremony(d: any): Promise<Ceremony | null> {
   const type = TYPES.includes(d?.type) ? (d.type as CeremonyType) : null;
   const title = clip(d?.title, 160), honoree = clip(d?.honoreeName, 160);
@@ -107,7 +112,16 @@ export async function createGroup(d: any): Promise<{ group: Group; accessCode: s
 }
 
 /** Champs modifiables. Le responsable du groupe n'a droit qu'à `MANAGER_FIELDS`. */
-export const MANAGER_FIELDS = ['customIntro', 'customPrompt', 'allowPhotos', 'isClosed', 'featuredPhotoUrl', 'featuredPhotoAspectRatio'] as const;
+export const MANAGER_FIELDS = ['customIntro', 'customPrompt', 'allowPhotos', 'isClosed', 'featuredPhotoUrl', 'featuredPhotoAspectRatio', 'themeOverrides'] as const;
+
+const FONT_VALUES = ['cormorant', 'cinzel', 'lora'];
+const PAPER_VALUES = ['ivory', 'parchment', 'alabaster', 'linen', 'noir'];
+function cleanOverrides(o: any): Partial<ThemeConfig> {
+  const out: Partial<ThemeConfig> = {};
+  if (FONT_VALUES.includes(o?.fontStyle)) out.fontStyle = o.fontStyle;
+  if (PAPER_VALUES.includes(o?.paperTexture)) out.paperTexture = o.paperTexture;
+  return out;
+}
 
 export async function updateGroup(id: string, d: any, asManager: boolean): Promise<Group | null> {
   const cur = await getGroup(id);
@@ -128,7 +142,7 @@ export async function updateGroup(id: string, d: any, asManager: boolean): Promi
     fw: Number.isInteger(d.featuredWidth) && d.featuredWidth > 0 ? d.featuredWidth : cur.featuredWidth,
     fh: Number.isInteger(d.featuredHeight) && d.featuredHeight > 0 ? d.featuredHeight : cur.featuredHeight,
     overrides: pick('themeOverrides') && d.themeOverrides && typeof d.themeOverrides === 'object'
-      ? d.themeOverrides : cur.themeOverrides,
+      ? cleanOverrides(d.themeOverrides) : cur.themeOverrides,
   };
   await sql`
     UPDATE groups SET name = ${next.name}, manager_name = ${next.managerName}, manager_email = ${next.managerEmail},
@@ -178,11 +192,4 @@ export async function getPublicInvite(slug: string): Promise<PublicInvite | null
 export async function getGroupIdBySlug(slug: string): Promise<{ id: string; allowPhotos: boolean; isClosed: boolean } | null> {
   const { rows } = await sql`SELECT id, allow_photos, is_closed FROM groups WHERE invite_slug = ${slug}`;
   return rows[0] ? { id: rows[0].id, allowPhotos: rows[0].allow_photos, isClosed: rows[0].is_closed } : null;
-}
-
-// TRANSITION : groupe historique utilisé tant que l'ancienne interface n'envoie pas d'inviteSlug.
-export const LEGACY_GROUP_ID = 'group-legacy-jean-michel';
-export async function getLegacyGroupAccess() {
-  const { rows } = await sql`SELECT id, allow_photos, is_closed FROM groups WHERE id = ${LEGACY_GROUP_ID}`;
-  return rows[0] ? { id: rows[0].id as string, allowPhotos: rows[0].allow_photos as boolean, isClosed: rows[0].is_closed as boolean } : null;
 }
