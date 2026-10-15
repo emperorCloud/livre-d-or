@@ -18,7 +18,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onOpenVIP }) => {
             <span>Livre d'Or & Hommage Numérique</span>
           </div>
           <p className="text-amber-300/60 text-xs">
-            Départ en Retraite de M. Jean-Michel Edimo — Août 2026
+            Raison
           </p>
         </div>
 
