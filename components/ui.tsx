@@ -1,10 +1,10 @@
 'use client';
 import { X } from 'lucide-react';
 
-export function Modal({ title, kicker, onClose, children, wide }: { title: string; kicker?: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+export function Modal({ title, kicker, onClose, children, wide, xl }: { title: string; kicker?: string; onClose: () => void; children: React.ReactNode; wide?: boolean; xl?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
-      <div className={`bg-stone-50 border border-stone-200 rounded-2xl w-full ${wide ? 'max-w-2xl' : 'max-w-md'} shadow-2xl text-stone-900 my-auto`}>
+      <div className={`bg-stone-50 border border-stone-200 rounded-2xl w-full ${xl ? 'max-w-6xl' : wide ? 'max-w-2xl' : 'max-w-md'} shadow-2xl text-stone-900 my-auto`}>
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-100/70 rounded-t-2xl">
           <div>
             {kicker && <span className="text-[11px] font-serif-cinzel uppercase tracking-widest text-amber-800 font-bold block">{kicker}</span>}

@@ -1,6 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, ExternalLink, Eye, Loader2 } from 'lucide-react';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry } from '@/lib/types';
 import { PDF_DEFAULTS } from '@/lib/client/themeStyles';
 import type { PdfBookOptions } from '@/lib/generatePdfBook';
@@ -23,8 +23,14 @@ export default function BookPdfModal({ ceremony, groups, entries, defaultGroupId
   const [closing, setClosing] = useState(d.closing);
   const [signature, setSignature] = useState(d.signature);
   const [progress, setProgress] = useState<{ p: number; s: string } | null>(null);
-  const [blobUrl, setBlobUrl] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState<'preview' | 'final' | null>(null);
+  const [preview, setPreview] = useState<{ url: string; key: string } | null>(null);
+  const [finalPdf, setFinalPdf] = useState<{ url: string; key: string } | null>(null);
+  const [auto, setAuto] = useState(false);
+  const previewUrlRef = useRef('');
+  const finalUrlRef = useRef('');
+  useEffect(() => () => { URL.revokeObjectURL(previewUrlRef.current); URL.revokeObjectURL(finalUrlRef.current); }, []);
 
   const selected = useMemo(() => {
     const ids = new Set(groups.filter((g) => g.ceremonyId === ceremony.id && (scope === 'all' || g.id === scope)).map((g) => g.id));
@@ -34,26 +40,53 @@ export default function BookPdfModal({ ceremony, groups, entries, defaultGroupId
   const photoCount = included.reduce((n, e) => n + getEntryPhotos(e).length, 0);
   const fileName = `livre-or-${ceremony.honoreeName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\W+/g, '-').toLowerCase()}.pdf`;
 
-  const generate = async () => {
-    setError(''); setBlobUrl(''); setProgress({ p: 1, s: 'Démarrage…' });
-    try {
-      const scopeGroup = groups.find((g) => g.id === scope);
-      const cover = (scopeGroup || groups.find((g) => g.ceremonyId === ceremony.id && g.featuredPhotoUrl))?.featuredPhotoUrl || ceremony.theme.coverImage || undefined;
-      const { generateGoldenBookPdf } = await import('@/lib/generatePdfBook');
-      const blob = await generateGoldenBookPdf(selected, {
-        theme, bookTitle: ceremony.title, recipientName: ceremony.honoreeName, dedicationSubtitle: ceremony.theme.coverQuote || ceremony.subtitle,
-        eventDate: ceremony.date, includePhotos, imageQuality: quality, prefaceText: preface, closingMessage: closing, closingSignature: signature,
-        wishLabel: d.wishLabel, coverPhotoUrl: cover, onProgress: (p, s) => setProgress({ p, s }),
-      });
-      const url = URL.createObjectURL(blob);
-      setBlobUrl(url);
-      const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Génération impossible.'); setProgress(null); }
+  // Empreinte des réglages : si elle change après l'aperçu, celui-ci est « obsolète ».
+  const optionsKey = JSON.stringify([scope, theme, includePhotos, preface, closing, signature, included.map((e) => `${e.id}${e.isPinned ? '*' : ''}`)]);
+  const stale = !!preview && preview.key !== optionsKey;
+
+  const build = async (q: 'print' | 'screen') => {
+    const scopeGroup = groups.find((g) => g.id === scope);
+    const cover = (scopeGroup || groups.find((g) => g.ceremonyId === ceremony.id && g.featuredPhotoUrl))?.featuredPhotoUrl || ceremony.theme.coverImage || undefined;
+    const { generateGoldenBookPdf } = await import('@/lib/generatePdfBook');
+    return generateGoldenBookPdf(selected, {
+      theme, bookTitle: ceremony.title, recipientName: ceremony.honoreeName, dedicationSubtitle: ceremony.theme.coverQuote || ceremony.subtitle,
+      eventDate: ceremony.date, includePhotos, imageQuality: q, prefaceText: preface, closingMessage: closing, closingSignature: signature,
+      wishLabel: d.wishLabel, coverPhotoUrl: cover, onProgress: (p, st) => setProgress({ p, s: st }),
+    });
   };
 
-  const running = !!progress && progress.p < 100 && !blobUrl && !error;
+  const saveAs = (url: string) => { const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); };
+
+  const run = async (mode: 'preview' | 'final') => {
+    setError(''); setBusy(mode); setProgress({ p: 1, s: 'Démarrage…' });
+    const key = optionsKey;
+    try {
+      // L'aperçu est toujours en qualité « écran » (rapide) : la mise en page est identique à celle du fichier final.
+      const blob = await build(mode === 'preview' ? 'screen' : quality);
+      const url = URL.createObjectURL(blob);
+      if (mode === 'preview') { URL.revokeObjectURL(previewUrlRef.current); previewUrlRef.current = url; setPreview({ url, key }); }
+      else { URL.revokeObjectURL(finalUrlRef.current); finalUrlRef.current = url; setFinalPdf({ url, key: `${key}|${quality}` }); saveAs(url); }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Génération impossible.'); setProgress(null); }
+    finally { setBusy(null); }
+  };
+
+  const download = async () => {
+    if (quality === 'screen' && preview && !stale) return saveAs(preview.url); // l'aperçu EST déjà le fichier final
+    if (finalPdf && finalPdf.key === `${optionsKey}|${quality}`) return saveAs(finalPdf.url);
+    await run('final');
+  };
+
+  // Actualisation automatique (optionnelle) : 1,5 s après la dernière modification.
+  useEffect(() => {
+    if (!auto || busy || error || included.length === 0 || (preview && !stale)) return;
+    const t = setTimeout(() => run('preview'), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, stale, busy, error, optionsKey]);
+
   return (
-    <Modal wide onClose={onClose} kicker={ceremony.title} title="Livre PDF">
+    <Modal xl onClose={onClose} kicker={ceremony.title} title="Livre PDF">
+      <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] gap-6">
       <div className="space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Groupes inclus"><select className={inputCls} value={scope} onChange={(e) => setScope(e.target.value)}>
@@ -74,6 +107,8 @@ export default function BookPdfModal({ ceremony, groups, entries, defaultGroupId
 
         <p className="text-xs text-stone-600 bg-stone-100 rounded-xl p-3">{included.length} témoignage{included.length > 1 ? 's' : ''} dans le livre{selected.length > included.length ? ` (${selected.length - included.length} masqué${selected.length - included.length > 1 ? 's' : ''})` : ''} · {includePhotos ? photoCount : 0} photo{photoCount > 1 ? 's' : ''}. Les témoignages masqués ne sont pas imprimés.</p>
 
+        <label className="flex items-center gap-2 text-xs text-stone-700"><input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />Actualiser l'aperçu automatiquement après chaque modification</label>
+
         {progress && (
           <div className="space-y-1">
             <div className="h-2 bg-stone-200 rounded-full overflow-hidden"><div className="h-full bg-amber-500 transition-all" style={{ width: `${progress.p}%` }} /></div>
@@ -84,9 +119,30 @@ export default function BookPdfModal({ ceremony, groups, entries, defaultGroupId
 
         <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-stone-200">
           <button className={btnGhost} onClick={onClose}>Fermer</button>
-          {blobUrl && <a className={btnGhost} href={blobUrl} download={fileName}><Download className="w-4 h-4" />Télécharger à nouveau</a>}
-          <button className={btnPrimary} disabled={running || included.length === 0} onClick={generate}>{running ? <><Loader2 className="w-4 h-4 animate-spin" />Génération…</> : 'Générer le livre PDF'}</button>
+          <button className={btnGhost} disabled={!!busy || included.length === 0} onClick={() => run('preview')}>
+            {busy === 'preview' ? <><Loader2 className="w-4 h-4 animate-spin" />Aperçu…</> : <><Eye className="w-4 h-4" />{preview ? "Actualiser l'aperçu" : "Voir l'aperçu"}</>}
+          </button>
+          <button className={btnPrimary} disabled={!!busy || included.length === 0} onClick={download}>
+            {busy === 'final' ? <><Loader2 className="w-4 h-4 animate-spin" />Génération…</> : <><Download className="w-4 h-4" />Télécharger le livre PDF</>}
+          </button>
         </div>
+      </div>
+
+      <div className="space-y-2 lg:sticky lg:top-0 self-start">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase text-stone-700">Aperçu du livre</span>
+          {stale && <span className="text-[11px] text-amber-900 bg-amber-100 rounded-full px-2 py-0.5">Obsolète : réglages modifiés</span>}
+        </div>
+        {preview ? (
+          <iframe title="Aperçu du livre PDF" src={`${preview.url}#view=FitH&navpanes=0`} className="w-full h-[70vh] rounded-xl border border-stone-300 bg-white" />
+        ) : (
+          <div className="h-[40vh] lg:h-[70vh] rounded-xl border-2 border-dashed border-stone-300 flex items-center justify-center text-center text-xs text-stone-500 p-6">
+            {busy === 'preview' ? 'Composition du livre…' : "Cliquez sur « Voir l'aperçu » : le livre s'affichera ici, page par page, avant tout téléchargement."}
+          </div>
+        )}
+        {preview && <a className={btnGhost} href={preview.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" />Ouvrir en plein écran</a>}
+        <p className="text-[11px] text-stone-500">L'aperçu est en qualité écran pour rester rapide ; le fichier téléchargé utilise la qualité choisie, avec la même mise en page. Sur téléphone, ouvrez l'aperçu en plein écran.</p>
+      </div>
       </div>
     </Modal>
   );
