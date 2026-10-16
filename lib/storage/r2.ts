@@ -36,3 +36,12 @@ export async function putObject(key: string, body: Uint8Array, contentType: stri
   if (!res.ok) throw new Error(`R2 a refusé l'écriture (${res.status}).`);
   return r2PublicUrl(key);
 }
+
+const R2_VARS = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET', 'R2_PUBLIC_URL'];
+/** Variables R2 absentes (liste vide = configuration complète). */
+export const r2Missing = () => R2_VARS.filter((n) => !process.env[n]);
+
+/** Test de connexion : HEAD signé. 200/404 = identifiants acceptés ; 403 = clé ou bucket refusé. */
+export async function r2Probe(): Promise<number> {
+  return (await fetch(sign('HEAD', '.healthcheck', {}, 60), { method: 'HEAD' })).status;
+}

@@ -1,3 +1,5 @@
+import { BRAND } from './brand';
+
 // Paramètres du site (type + valeurs par défaut GÉNÉRIQUES, sans aucun nom propre). Modifiables par l'administrateur.
 export interface SiteSettings {
   brandName: string;       // nom affiché dans l'en-tête
@@ -11,14 +13,14 @@ export interface SiteSettings {
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  brandName: "Livre d'Or",
-  brandTagline: "Livres d'or & registres cérémoniels",
-  welcomeKicker: "Plateforme de livres d'or",
-  welcomeTitle: "Livres d'or cérémoniels, photos souvenirs & livre PDF d'art",
+  brandName: BRAND.name,
+  brandTagline: BRAND.tagline,
+  welcomeKicker: "Plateforme de livres d'or cérémoniels",
+  welcomeTitle: "Un livre d'or en ligne pour chaque cérémonie : messages, photos et livre PDF d'art",
   welcomeText:
-    "Chaque cérémonie (deuil, mariage, anniversaire, retraite) possède son univers visuel. Les responsables invitent leurs proches à déposer messages et photos, puis génèrent un livre commémoratif haute définition.",
+    "Deuil, mariage, anniversaire ou départ à la retraite : invitez vos proches à déposer un message et des photos depuis un simple lien ou un QR code, puis téléchargez un livre commémoratif en haute définition.",
   loginLabel: 'Connexion',
-  footerLeft: "Livre d'Or — registres cérémoniels",
+  footerLeft: `${BRAND.name} — ${BRAND.tagline}`,
   footerRight: 'Photos souvenirs · Livre PDF A4 haute définition',
 };
 

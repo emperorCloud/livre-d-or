@@ -10,7 +10,7 @@ type Result = { ok: true } | { ok: false; status: number; error: string };
  * Les photos de souvenir : un invité avec le lien d'un groupe ouvert qui accepte les photos (ou un responsable/admin).
  */
 export async function authorizeUpload(req: Request, input: { inviteSlug?: string; kind: UploadKind }): Promise<Result> {
-  if (!(await rateLimit(`upload:${clientIp(req)}`, 120, 600))) {
+  if (!(await rateLimit(`upload:${(input.inviteSlug || 'staff').slice(0, 64)}:${clientIp(req)}`, 300, 600))) {
     return { ok: false, status: 429, error: 'Trop de téléversements, réessayez dans quelques minutes.' };
   }
   const session = await getSession();

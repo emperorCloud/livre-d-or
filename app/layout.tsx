@@ -1,7 +1,9 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Cormorant_Garamond, Cinzel, Lora, Plus_Jakarta_Sans } from 'next/font/google';
 import { getSettings } from '@/lib/settingsDb';
+import { BRAND } from '@/lib/brand';
+import { siteUrl, trimDescription } from '@/lib/seo';
 
 const cormorant = Cormorant_Garamond({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], variable: '--font-cormorant', display: 'swap' });
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-cinzel', display: 'swap' });
@@ -10,14 +12,23 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakart
 
 export const dynamic = 'force-dynamic';
 
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: BRAND.themeColor };
+
 // Titre et description viennent des paramètres du site (gérés par l'administrateur), jamais du code.
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
+  const title = `${s.brandName} — ${s.brandTagline}`;
+  const description = trimDescription(s.welcomeText);
   return {
-    title: { default: s.brandName, template: `%s — ${s.brandName}` },
-    description: s.brandTagline,
-    openGraph: { title: s.brandName, description: s.brandTagline, type: 'website' },
-    twitter: { card: 'summary_large_image' },
+    metadataBase: new URL(siteUrl()),
+    applicationName: s.brandName,
+    title: { default: title, template: `%s — ${s.brandName}` },
+    description,
+    keywords: [...BRAND.keywords],
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
+    openGraph: { type: 'website', siteName: s.brandName, locale: 'fr_FR', title, description },
+    twitter: { card: 'summary_large_image', title, description },
+    formatDetection: { telephone: false, email: false, address: false },
   };
 }
 

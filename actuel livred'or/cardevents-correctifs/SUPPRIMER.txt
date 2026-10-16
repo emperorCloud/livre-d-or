@@ -1,0 +1,25 @@
+Fichiers à supprimer de votre dépôt :
+MIGRATION.md
+
+components/AdminDashboardModal.tsx
+
+components/Footer.tsx
+
+components/GuestDashboardModal.tsx
+
+components/Header.tsx
+
+components/PdfBookModal.tsx
+
+components/PhotoLightbox.tsx
+
+components/TeamTribute.tsx
+
+components/TestimonialCard.tsx
+
+components/TestimonialsWall.tsx
+
+components/VIPModal.tsx
+
+lib/blob.ts
+

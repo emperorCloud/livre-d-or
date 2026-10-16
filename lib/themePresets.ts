@@ -7,13 +7,13 @@ export const THEME_PRESETS: Record<CeremonyType, ThemeConfig> = {
   deuil: {
     fontStyle: 'cormorant', paperTexture: 'parchment', primaryColor: '#1C1917', accentColor: '#57534E',
     bgGradient: 'from-stone-100 via-stone-50 to-neutral-200/50', coverImage: '',
-    coverQuote: 'Le souvenir est le parfum de l’âme qui ne s’éteint jamais.', coverQuoteAuthor: 'George Sand',
+    coverQuote: 'Ceux que nous aimons ne s’éloignent jamais vraiment : ils vivent dans nos souvenirs.', coverQuoteAuthor: '',
     symbol: 'candle', borderStyle: 'classic',
   },
   mariage: {
     fontStyle: 'cormorant', paperTexture: 'ivory', primaryColor: '#854D0E', accentColor: '#CA8A04',
     bgGradient: 'from-amber-50/70 via-stone-50 to-stone-100', coverImage: '',
-    coverQuote: 'Aimer, c’est trouver sa propre richesse dans le cœur de l’autre.', coverQuoteAuthor: 'Romain Rolland',
+    coverQuote: 'Deux vies, une même histoire : merci d’en écrire une page avec nous.', coverQuoteAuthor: '',
     symbol: 'ring', borderStyle: 'ornate',
   },
   anniversaire: {
@@ -25,7 +25,7 @@ export const THEME_PRESETS: Record<CeremonyType, ThemeConfig> = {
   retraite: {
     fontStyle: 'cinzel', paperTexture: 'linen', primaryColor: '#1E3A8A', accentColor: '#B45309',
     bgGradient: 'from-sky-50/60 via-stone-50 to-amber-50/40', coverImage: '',
-    coverQuote: 'Le secret du changement est de construire l’avenir plutôt que de lutter contre le passé.', coverQuoteAuthor: 'Socrate',
+    coverQuote: 'Une belle carrière s’achève, de beaux souvenirs commencent.', coverQuoteAuthor: '',
     symbol: 'pen', borderStyle: 'minimal',
   },
 };

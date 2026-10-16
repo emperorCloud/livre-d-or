@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!(await rateLimit(`entry:${clientIp(req)}`, 10, 3600))) {
+  // Par lien ET par IP, et large : à une cérémonie, tous les invités partagent le même Wi-Fi ou réseau mobile.
+  const slugKey = typeof body.inviteSlug === 'string' ? body.inviteSlug.slice(0, 64) : '';
+  if (!(await rateLimit(`entry:${slugKey}:${clientIp(req)}`, 60, 3600))) {
     return NextResponse.json({ error: 'Trop de messages envoyés, réessayez plus tard.' }, { status: 429 });
   }
 

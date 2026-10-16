@@ -2,15 +2,16 @@
 import { LogIn, LogOut, Shield, Users } from 'lucide-react';
 import type { AuthRole } from '@/lib/types';
 import type { SiteSettings } from '@/lib/siteSettings';
+import { brandInitials } from '@/lib/brand';
 
 interface Props { settings: SiteSettings; role: AuthRole; managerLabel?: string; onLogin?: () => void; onLogout?: () => void; onBrand?: () => void }
 
 export default function Navbar({ settings, role, managerLabel, onLogin, onLogout, onBrand }: Props) {
-  const initials = settings.brandName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const initials = brandInitials(settings.brandName);
   return (
     <header className="sticky top-0 z-40 bg-stone-900 text-stone-100 border-b border-stone-800 shadow-md no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-6 h-16">
-        <button onClick={onBrand} className="flex items-center gap-3 font-serif-cinzel font-bold tracking-widest text-lg text-amber-100 hover:text-white transition-colors shrink-0">
+        <button onClick={onBrand} aria-label={settings.brandName} className="flex items-center gap-3 font-serif-cinzel font-bold tracking-widest text-lg text-amber-100 hover:text-white transition-colors shrink-0">
           <span className="w-8 h-8 rounded-lg bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-300 text-sm">{initials}</span>
           <span className="truncate max-w-[40vw] sm:max-w-none uppercase">{settings.brandName}</span>
         </button>

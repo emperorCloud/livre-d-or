@@ -48,17 +48,17 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   count INTEGER NOT NULL DEFAULT 0
 );
 
--- Reprise de l'existant : une cérémonie + un groupe NEUTRES reçoivent les témoignages déjà enregistrés.
--- L'administrateur renseigne ensuite le titre, le nom du concerné, les dates, etc. depuis son tableau de bord.
--- Le responsable de ce groupe n'a pas de code tant que l'admin n'en génère pas un (« Réinitialiser le code »).
+-- Reprise de l'existant (uniquement s'il y a DÉJÀ des témoignages sans groupe ; base neuve = rien n'est créé).
+-- Une cérémonie et un groupe génériques les reçoivent ; l'administrateur les renomme ensuite depuis son tableau de bord.
 INSERT INTO ceremonies (id, type, title, subtitle, honoree_name, theme)
-SELECT 'ceremony-existing', 'retraite', 'Livre d''or existant', '', 'À renseigner', '{}'::jsonb
-WHERE NOT EXISTS (SELECT 1 FROM ceremonies);
+SELECT 'ceremony-default', 'retraite', 'Livre d''or', '', '', '{}'::jsonb
+WHERE EXISTS (SELECT 1 FROM entries WHERE group_id IS NULL) AND NOT EXISTS (SELECT 1 FROM ceremonies);
 
 INSERT INTO groups (id, ceremony_id, name, manager_name)
-SELECT 'group-existing', c.id, 'Tous les invités', ''
+SELECT 'group-default', c.id, 'Invités', ''
 FROM (SELECT id FROM ceremonies ORDER BY created_at ASC LIMIT 1) c
-WHERE NOT EXISTS (SELECT 1 FROM groups);
+WHERE EXISTS (SELECT 1 FROM entries WHERE group_id IS NULL) AND NOT EXISTS (SELECT 1 FROM groups);
 
--- Rejouable : rattache tout témoignage orphelin au premier groupe
-UPDATE entries SET group_id = (SELECT id FROM groups ORDER BY created_at ASC LIMIT 1) WHERE group_id IS NULL;
+-- Rejouable : rattache tout témoignage orphelin au premier groupe (sans effet s'il n'y en a pas)
+UPDATE entries SET group_id = (SELECT id FROM groups ORDER BY created_at ASC LIMIT 1)
+WHERE group_id IS NULL AND EXISTS (SELECT 1 FROM groups);

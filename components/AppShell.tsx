@@ -28,9 +28,9 @@ type Modal =
 
 const NONE: SessionInfo = { role: 'none', isAdmin: false };
 
-export default function AppShell({ initialSettings }: { initialSettings: SiteSettings }) {
+export default function AppShell({ initialSettings, initialSession }: { initialSettings: SiteSettings; initialSession?: SessionInfo }) {
   const [settings, setSettings] = useState(initialSettings);
-  const [session, setSession] = useState<SessionInfo | null>(null);
+  const [session, setSession] = useState<SessionInfo | null>(initialSession ?? null);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [entries, setEntries] = useState<GuestEntry[]>([]);

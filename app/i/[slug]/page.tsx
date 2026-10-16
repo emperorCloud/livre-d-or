@@ -10,11 +10,12 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const invite = await getPublicInvite(slug).catch(() => null);
-  if (!invite) return { title: "Livre d'or introuvable" };
+  if (!invite) return { title: "Livre d'or introuvable", robots: { index: false, follow: false } };
   const title = invite.ceremony.title;
   const description = invite.customIntro || `Laissez un message pour ${invite.ceremony.honoreeName}.`;
   return {
     title, description,
+    robots: { index: false, follow: false }, // lien privé : jamais dans Google
     openGraph: { title, description, type: 'website', images: invite.featuredPhotoUrl ? [{ url: invite.featuredPhotoUrl }] : undefined },
     twitter: { card: 'summary_large_image' },
   };

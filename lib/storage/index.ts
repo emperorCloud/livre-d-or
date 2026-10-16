@@ -17,7 +17,11 @@ export function isOwnedStorageUrl(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== 'https:') return false;
-    if (u.hostname.endsWith('.public.blob.vercel-storage.com')) return true;
+    if (u.hostname.endsWith('.public.blob.vercel-storage.com')) {
+      // Si BLOB_PUBLIC_HOST est défini, seul VOTRE store est accepté (pas celui d'un tiers).
+      const pinned = process.env.BLOB_PUBLIC_HOST?.trim().toLowerCase();
+      return !pinned || u.hostname === pinned;
+    }
     const r2 = process.env.R2_PUBLIC_URL;
     return !!r2 && u.hostname === new URL(r2).hostname;
   } catch {
