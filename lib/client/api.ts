@@ -1,4 +1,4 @@
-import type { Ceremony, Group, GuestEntry, SessionInfo } from '@/lib/types';
+import type { Ceremony, Group, GuestEntry, InvitationGuest, PublicInvitation, SessionInfo } from '@/lib/types';
 import type { SiteSettings } from '@/lib/siteSettings';
 
 async function parse<T>(res: Response): Promise<T> {
@@ -34,7 +34,16 @@ export const api = {
   moderate: (id: string, patch: { isPinned?: boolean; isApproved?: boolean }) => send<{ entry: GuestEntry }>('PATCH', `/api/admin/entries/${id}`, patch),
   deleteEntry: (id: string) => send<{ success: true }>('DELETE', `/api/admin/entries/${id}`),
 
-  // invité
+  // invitations (responsable / admin) — l'admin précise la cérémonie, le responsable est limité à la sienne côté serveur
+  invitations: (ceremonyId?: string) => get<InvitationGuest[]>(`/api/invitations${ceremonyId ? `?ceremonyId=${encodeURIComponent(ceremonyId)}` : ''}`),
+  createGuest: (body: unknown, ceremonyId?: string) => send<{ guest: InvitationGuest }>('POST', `/api/invitations${ceremonyId ? `?ceremonyId=${encodeURIComponent(ceremonyId)}` : ''}`, body),
+  updateGuest: (id: string, patch: unknown) => send<{ guest: InvitationGuest }>('PATCH', `/api/invitations/${id}`, patch),
+  deleteGuest: (id: string) => send<{ success: true }>('DELETE', `/api/invitations/${id}`),
+
+  // invité (lien personnel)
+  rsvp: (token: string, body: unknown) => send<{ invitation: PublicInvitation }>('POST', `/api/inv/${encodeURIComponent(token)}/rsvp`, body),
+
+  // invité du livre d'or
   myEntries: (token: string) => get<GuestEntry[]>(`/api/entries?guestToken=${encodeURIComponent(token)}`),
   submitEntry: (body: unknown) => send<{ entry: GuestEntry; token?: string }>('POST', '/api/entries', body),
   deleteMine: (token: string) => send<{ success: true }>('DELETE', `/api/entries/token/${encodeURIComponent(token)}`),

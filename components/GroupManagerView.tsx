@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import InvitationManager from './InvitationManager';
 import { ArrowLeft, BookOpen, Check, Copy, ExternalLink, Pin, QrCode, Trash2, Eye, EyeOff } from 'lucide-react';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry, type ThemeConfig } from '@/lib/types';
 import { FONTS, PAPERS } from '@/lib/client/themeStyles';
@@ -22,6 +23,11 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
+  // Formule du mariage : livre d'or, invitations, ou les deux (onglets)
+  const hasBook = ceremony.mode !== 'invitation';
+  const hasInv = ceremony.mode !== 'guestbook';
+  const [tab, setTab] = useState<'book' | 'inv'>(hasBook ? 'book' : 'inv');
+  const showBook = hasBook && tab === 'book';
   useEffect(() => setDraft(group), [group]);
   const patch = (p: Partial<Group>) => { setSaved(false); setDraft((d) => ({ ...d, ...p })); };
   const overrides = (draft.themeOverrides || {}) as Partial<ThemeConfig>;
@@ -53,8 +59,16 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         {onBack && <button onClick={onBack} className="text-xs text-stone-600 hover:text-stone-900 flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" />Retour à l'administration</button>}
         <span className="text-[11px] uppercase tracking-[0.25em] font-serif-cinzel font-semibold text-amber-900">{ceremony.title}</span>
         <h1 className="text-3xl font-serif-cormorant font-bold">{group.name}</h1>
-        <p className="text-xs text-stone-600">{mine.length} témoignage{mine.length > 1 ? 's' : ''} · {photos} photo{photos > 1 ? 's' : ''}{group.isClosed ? ' · clos' : ''}</p>
+        {hasBook && <p className="text-xs text-stone-600">{mine.length} témoignage{mine.length > 1 ? 's' : ''} · {photos} photo{photos > 1 ? 's' : ''}{group.isClosed ? ' · clos' : ''}</p>}
       </div>
+
+      {hasBook && hasInv && (
+        <div className="flex gap-2 border-b border-stone-200">
+          {([['book', "Livre d'or"], ['inv', 'Invitations']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 -mb-px transition-colors ${tab === id ? 'border-amber-600 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-800'}`}>{label}</button>
+          ))}
+        </div>
+      )}
 
       {onBack && (
         <section className={section}>
@@ -67,6 +81,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         </section>
       )}
 
+      {showBook && (
       <section className={section}>
         <h2 className={title}>Lien d'invitation pour vos invités</h2>
         <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="w-full text-xs font-mono bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5" />
@@ -77,12 +92,16 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
           <button className={btnGhost} onClick={onPdf}><BookOpen className="w-4 h-4" />Télécharger le livre en PDF</button>
         </div>
       </section>
+      )}
 
       <section className={section}>
         <h2 className={title}>Photo du concerné à la une</h2>
         <FeaturedPhotoEditor group={draft} onChange={patch} />
       </section>
 
+      {hasInv && tab === 'inv' && <InvitationManager ceremony={ceremony} isAdmin={!!onBack} />}
+
+      {showBook && (
       <section className={section}>
         <h2 className={title}>Personnalisation de la page</h2>
         <Field label="Mot d'accueil des invités"><textarea rows={3} className={inputCls} value={draft.customIntro} onChange={(e) => patch({ customIntro: e.target.value })} /></Field>
@@ -94,6 +113,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         <label className="flex items-center gap-2 text-xs text-stone-700"><input type="checkbox" checked={draft.allowPhotos} onChange={(e) => patch({ allowPhotos: e.target.checked })} />Autoriser l'envoi de photos souvenirs (jusqu'à 6 par invité)</label>
         <label className="flex items-center gap-2 text-xs text-stone-700"><input type="checkbox" checked={draft.isClosed} onChange={(e) => patch({ isClosed: e.target.checked })} />Clôturer les signatures (verrouiller le livre avant impression)</label>
       </section>
+      )}
 
       <div className="flex items-center gap-3 sticky bottom-4">
         <button onClick={save} disabled={busy} className={`${btnPrimary} shadow-lg`}>{busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
@@ -101,6 +121,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         {error && <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</span>}
       </div>
 
+      {showBook && (
       <section className={section}>
         <h2 className={title}>Messages reçus ({mine.length})</h2>
         {mine.length === 0 && <p className="text-xs text-stone-500">Aucun message pour le moment. Partagez le lien d'invitation !</p>}
@@ -126,6 +147,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
           })}
         </ul>
       </section>
+      )}
     </main>
   );
 }

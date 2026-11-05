@@ -102,9 +102,13 @@ export interface ThemeConfig {
   borderStyle: 'classic' | 'minimal' | 'ornate' | 'modern';
 }
 
+/** Mariage : livre d'or, invitations, ou les deux. Les autres types sont toujours « guestbook ». */
+export type CeremonyMode = 'guestbook' | 'invitation' | 'both';
+
 export interface Ceremony {
   id: string;
   type: CeremonyType;
+  mode: CeremonyMode;
   title: string;
   subtitle: string;
   honoreeName: string;
@@ -157,4 +161,42 @@ export interface SessionInfo {
   role: AuthRole;
   groupId?: string;
   isAdmin: boolean; // compat. ancienne UI
+}
+
+// ===== Invitations (mariage) =====
+export type RsvpStatus = 'pending' | 'yes' | 'no' | 'maybe';
+
+/** Vue du responsable / de l'admin sur un invité. Contient le jeton du lien personnel : jamais envoyée à un invité. */
+export interface InvitationGuest {
+  id: string;
+  ceremonyId: string;
+  token: string;
+  ticketCode: string;
+  greeting: string;
+  category: string;
+  email: string;
+  phone: string;
+  tableNumber: string;
+  maxGuests: number;
+  rsvpStatus: RsvpStatus;
+  rsvpGuests: number;
+  diet: string;
+  allergies: string;
+  note: string;
+  rsvpAt: string | null;
+  checkedInAt: string | null;
+  checkedInCount: number;
+  createdAt: string;
+}
+
+/** Ce que reçoit l'invité : uniquement SA fiche et les informations publiques du mariage. */
+export interface PublicInvitation {
+  greeting: string;
+  maxGuests: number;
+  tableNumber: string;
+  rsvp: { status: RsvpStatus; guests: number; diet: string; allergies: string; note: string; at: string | null };
+  ticketCode: string | null; // fourni seulement quand l'invité a répondu « oui »
+  ceremony: Pick<Ceremony, 'type' | 'title' | 'subtitle' | 'honoreeName' | 'date' | 'location'>;
+  theme: ThemeConfig;
+  photo: { url: string; aspectRatio: '16:9' | '4:5' | '1:1'; focalX: number; focalY: number };
 }

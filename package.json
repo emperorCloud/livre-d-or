@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:logic": "node --experimental-strip-types scripts/test-pdf-logic.mts",
+    "test:logic": "node --experimental-strip-types scripts/test-pdf-logic.mts && node --experimental-strip-types scripts/test-invitations.mts",
     "pdf:sample": "tsx --tsconfig tsconfig.scripts.json scripts/pdf-sample.tsx",
     "migrate:storage": "node --env-file=.env.local --experimental-strip-types scripts/migrate-storage.mts"
   },
@@ -15,7 +15,7 @@
     "@aws-sdk/client-s3": "^3.500.0",
     "@aws-sdk/s3-request-presigner": "^3.500.0",
     "@react-pdf/renderer": "^4.9.0",
-    "@vercel/blob": "^2.8.1",
+    "@vercel/blob": "^2.4.0",
     "@vercel/postgres": "^0.10.0",
     "canvas-confetti": "^1.9.4",
     "html2canvas": "^1.4.1",

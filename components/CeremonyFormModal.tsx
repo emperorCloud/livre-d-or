@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
-import type { Ceremony, CeremonyType, ThemeConfig } from '@/lib/types';
+import type { Ceremony, CeremonyMode, CeremonyType, ThemeConfig } from '@/lib/types';
 import { THEME_PRESETS } from '@/lib/themePresets';
 import { CEREMONY_TYPES, FONTS, PAPERS, SYMBOLS } from '@/lib/client/themeStyles';
 import { Modal, Field, inputCls, btnPrimary, btnGhost } from './ui';
 
 export interface CeremonyFormValues {
-  type: CeremonyType; title: string; subtitle: string; honoreeName: string; date: string; location: string; theme: ThemeConfig;
+  type: CeremonyType; mode: CeremonyMode; title: string; subtitle: string; honoreeName: string; date: string; location: string; theme: ThemeConfig;
 }
 interface Props {
   ceremony?: Ceremony;                                   // présent = modification
@@ -17,19 +17,20 @@ interface Props {
 export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props) {
   const editing = !!ceremony;
   const [v, setV] = useState<CeremonyFormValues>(ceremony
-    ? { type: ceremony.type, title: ceremony.title, subtitle: ceremony.subtitle, honoreeName: ceremony.honoreeName, date: ceremony.date, location: ceremony.location, theme: ceremony.theme }
-    : { type: 'retraite', title: '', subtitle: '', honoreeName: '', date: '', location: '', theme: THEME_PRESETS.retraite });
+    ? { type: ceremony.type, mode: ceremony.mode, title: ceremony.title, subtitle: ceremony.subtitle, honoreeName: ceremony.honoreeName, date: ceremony.date, location: ceremony.location, theme: ceremony.theme }
+    : { type: 'retraite', mode: 'guestbook', title: '', subtitle: '', honoreeName: '', date: '', location: '', theme: THEME_PRESETS.retraite });
   const [groupName, setGroupName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof CeremonyFormValues>(k: K, val: CeremonyFormValues[K]) => setV((p) => ({ ...p, [k]: val }));
   const setTheme = <K extends keyof ThemeConfig>(k: K, val: ThemeConfig[K]) => setV((p) => ({ ...p, theme: { ...p.theme, [k]: val } }));
 
-  const pickType = (type: CeremonyType) => setV((p) => ({ ...p, type, theme: { ...THEME_PRESETS[type], footerText: p.theme.footerText, coverImage: p.theme.coverImage } }));
+  // La formule (livre d'or / invitation / les deux) n'existe que pour le mariage ; les autres types gardent le livre d'or.
+  const pickType = (type: CeremonyType) => setV((p) => ({ ...p, type, mode: type === 'mariage' ? (p.type === 'mariage' ? p.mode : 'both') : 'guestbook', theme: { ...THEME_PRESETS[type], footerText: p.theme.footerText, coverImage: p.theme.coverImage } }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setBusy(true);
-    try { await onSubmit(v, editing ? undefined : groupName.trim() || undefined); onClose(); }
+    try { await onSubmit({ ...v, mode: v.type === 'mariage' ? v.mode : 'guestbook' }, editing ? undefined : groupName.trim() || undefined); onClose(); }
     catch (err) { setError(err instanceof Error ? err.message : 'Enregistrement impossible.'); }
     finally { setBusy(false); }
   };
@@ -48,9 +49,27 @@ export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props
           ))}
         </div>
 
+        {v.type === 'mariage' && (
+          <div className="space-y-2">
+            <span className="block text-xs font-semibold uppercase text-stone-700">Formule du mariage</span>
+            <div className="grid sm:grid-cols-3 gap-2">
+              {([
+                { m: 'guestbook', label: "Livre d'or", d: 'Messages et photos des invités, livre PDF.' },
+                { m: 'invitation', label: 'Invitation', d: 'Lien personnel par invité, réponses, billet QR, émargement.' },
+                { m: 'both', label: 'Les deux', d: "Invitations et livre d'or dans le même espace." },
+              ] as { m: CeremonyMode; label: string; d: string }[]).map((o) => (
+                <button type="button" key={o.m} onClick={() => set('mode', o.m)}
+                  className={`text-left p-3 rounded-xl border text-xs transition-all ${v.mode === o.m ? 'border-amber-600 bg-amber-50 shadow-sm' : 'border-stone-300 bg-white hover:border-stone-400'}`}>
+                  <span className="font-semibold block text-stone-900">{o.label}</span><span className="text-stone-500">{o.d}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Titre *"><input required className={inputCls} value={v.title} onChange={(e) => set('title', e.target.value)} placeholder="Ex : Hommage à …" /></Field>
-          <Field label="Nom du ou des concerné(s) *"><input required className={inputCls} value={v.honoreeName} onChange={(e) => set('honoreeName', e.target.value)} placeholder="Ex : Marie & Paul Dupont" /></Field>
+          <Field label="Titre *"><input required className={inputCls} value={v.title} onChange={(e) => set('title', e.target.value)} placeholder="Titre de la cérémonie" /></Field>
+          <Field label="Nom du ou des concerné(s) *"><input required className={inputCls} value={v.honoreeName} onChange={(e) => set('honoreeName', e.target.value)} placeholder="Nom de la ou des personnes concernées" /></Field>
           <Field label="Sous-titre"><input className={inputCls} value={v.subtitle} onChange={(e) => set('subtitle', e.target.value)} /></Field>
           <Field label="Date"><input className={inputCls} value={v.date} onChange={(e) => set('date', e.target.value)} placeholder="Ex : 28 août 2026" /></Field>
           <Field label="Lieu"><input className={inputCls} value={v.location} onChange={(e) => set('location', e.target.value)} /></Field>
@@ -73,7 +92,7 @@ export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props
         </div>
 
         {!editing && (
-          <Field label="Premier groupe (facultatif)" hint="Ex : Famille proche, Collègues, Amis d'enfance… Vous pourrez en ajouter d'autres ensuite.">
+          <Field label={v.type === 'mariage' ? 'Dossier du mariage (accès du responsable)' : 'Premier groupe (facultatif)'} hint={v.type === 'mariage' ? "Un seul responsable par mariage : son code d'accès est généré à la création et affiché une seule fois." : "Ex : Famille proche, Collègues, Amis d'enfance… Vous pourrez en ajouter d'autres ensuite."}>
             <input className={inputCls} value={groupName} onChange={(e) => setGroupName(e.target.value)} />
           </Field>
         )}

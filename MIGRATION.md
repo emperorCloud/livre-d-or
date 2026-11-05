@@ -10,13 +10,13 @@ dans `app/api/upload` et `app/api/entries`). La phase 2 portera l'interface.
 2. **Vercel** : remplacer `ADMIN_PASSCODE` par une vraie phrase de passe. Les autres variables ne changent pas
    (`POSTGRES_URL`, `BLOB_READ_WRITE_TOKEN`, `SESSION_SECRET`) : **aucune nouvelle variable**.
 3. **Neon → SQL Editor** : exécuter `lib/migrations/002_ceremonies_groups.sql` (additif, rejouable,
-   rattache tes témoignages existants à « Hommage à Jean-Michel Edimo / Tous les invités »).
+   rattache tes témoignages existants à une cérémonie et un groupe neutres que tu renommeras depuis l'administration).
 4. Pousser le code et déployer.
 
 ## Vérifications après déploiement
 - Le site actuel affiche et enregistre toujours des témoignages.
 - Connexion admin (la session précédente est invalidée : reconnecte-toi).
-- `POST /api/groups/group-legacy-jean-michel/reset-code` (connecté admin) → renvoie le code responsable, affiché une seule fois.
+- Bouton « Nouveau code responsable » (clé) d'un groupe → code affiché une seule fois.
 - `POST /api/manager/login {"code":"XXXXXX-XXXXXXXXXX"}` → session responsable, limitée à son groupe.
 - `GET /api/invite/<inviteSlug>` → données publiques du groupe (aucun e-mail ni code).
 
@@ -61,3 +61,37 @@ dans `app/api/upload` et `app/api/entries`). La phase 2 portera l'interface.
 ## Limites des photos
 - 6 par invité (`MAX_PHOTOS_PER_ENTRY`, `lib/storage/index.ts`). Chaque photo est réduite à 1600 px (JPEG ~0,4 Mo) + vignette 480 px.
 - Photo à la une : minimum 1600×900 (16:9), 1080×1350 (4:5) ou 1080×1080 (1:1) ; idéal 2400×1350 / 1600×2000 / 1800×1800.
+
+---
+
+# Mariage — étape 1 : formule Livre d'or / Invitation / Les deux
+
+## Base de données
+Exécuter dans Neon **avant** de déployer : `lib/migrations/006_mariage_invitations.sql` (additive, rejouable).
+
+## Ce qui est livré
+- **Formulaire de création/modification d'une cérémonie** : pour le type *Mariage*, choix de la formule **Livre d'or / Invitation / Les deux**
+  (les autres types gardent le livre d'or). La carte admin indique la formule.
+- **1 mariage = 1 responsable.** Le « dossier du mariage » (le groupe créé avec la cérémonie) porte le code du responsable, attribué par l'admin.
+- **Espace responsable** : onglets *Livre d'or* et *Invitations* selon la formule. La photo à la une est commune.
+- **Invitations** : le responsable ajoute ses invités (nom d'invitation, catégorie libre, nombre de personnes prévues, table, téléphone, e-mail),
+  suit les réponses, copie le **lien personnel** (`/inv/<jeton>`) ou l'envoie par WhatsApp. L'admin peut faire de même depuis « Gérer ».
+- **Page personnelle de l'invité** : le grand jour (photo à la une, date, lieu), sa réponse (présent / peut-être / absent, nombre de personnes,
+  régime, allergies, petit mot), son **billet QR** (activé quand il répond « oui »).
+- **Deux liens séparés** : lien du livre d'or unique pour tous (celui du groupe), lien d'invitation personnel par invité.
+  Un mariage en « Invitation » seule n'a pas de page livre d'or ; en « Livre d'or » seul, les liens personnels cessent de fonctionner.
+
+## Sécurité
+- Jeton personnel : 144 bits aléatoires. Le serveur ne renvoie à l'invité que **sa** fiche (jamais la liste, ni d'e-mail, ni de jeton d'autrui).
+- Le code du billet (QR) est distinct du jeton du lien : une capture du billet ne révèle pas le lien.
+- Un responsable ne peut lire ni modifier que les invités de **son** mariage (contrôlé côté serveur à chaque requête).
+- Réponses validées côté serveur : jamais plus de personnes que prévu. Limites de débit sur la consultation et les réponses.
+- Pages personnelles : `noindex`, pas de transmission du jeton aux sites externes.
+
+## À vérifier chez vous
+`npm install`, `npm run lint`, `npm run test:logic`. Puis : créer un mariage « Les deux » → récupérer le code responsable → se connecter → onglet Invitations → ajouter un invité → ouvrir son lien → répondre → voir le billet.
+
+## Prochaines étapes
+2. Import CSV, statistiques détaillées, **émargement par caméra** (code du billet), exports et feuille imprimable.
+3. Contenu de l'invitation : programme par événement, histoire, cadeaux, dress code, contacts, compte à rebours, musique, anglais.
+4. Annonces, messages, plan de table, liste de cadeaux.

@@ -1,16 +1,17 @@
 import { sql } from '@vercel/postgres';
 import { randomUUID } from 'crypto';
-import type { Ceremony, CeremonyType, Group, PublicInvite, ThemeConfig } from './types';
+import type { Ceremony, CeremonyMode, CeremonyType, Group, PublicInvite, ThemeConfig } from './types';
 import { buildTheme, sanitizeBlobUrl } from './themePresets';
 import { generateAccessCode } from './auth';
 
 const TYPES: CeremonyType[] = ['deuil', 'mariage', 'anniversaire', 'retraite'];
 const RATIOS = ['16:9', '4:5', '1:1'] as const;
+const MODES: CeremonyMode[] = ['guestbook', 'invitation', 'both'];
 const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 
 function rowToCeremony(r: any): Ceremony {
   return {
-    id: r.id, type: r.type, title: r.title, subtitle: r.subtitle, honoreeName: r.honoree_name,
+    id: r.id, type: r.type, mode: (MODES.includes(r.mode) ? r.mode : 'guestbook') as CeremonyMode, title: r.title, subtitle: r.subtitle, honoreeName: r.honoree_name,
     date: r.event_date, location: r.location,
     theme: buildTheme(r.type, r.theme || {}),
     createdAt: new Date(r.created_at).toISOString(),
@@ -47,9 +48,10 @@ export async function createCeremony(d: any): Promise<Ceremony | null> {
   if (!type || !title || !honoree) return null;
   const id = 'ceremony-' + randomUUID();
   const theme = buildTheme(type, d.theme || {});
+  const mode: CeremonyMode = type === 'mariage' && MODES.includes(d.mode) ? d.mode : 'guestbook'; // la formule n'existe que pour le mariage
   await sql`
-    INSERT INTO ceremonies (id, type, title, subtitle, honoree_name, event_date, location, theme)
-    VALUES (${id}, ${type}, ${title}, ${clip(d.subtitle, 200)}, ${honoree}, ${clip(d.date, 80)},
+    INSERT INTO ceremonies (id, type, mode, title, subtitle, honoree_name, event_date, location, theme)
+    VALUES (${id}, ${type}, ${mode}, ${title}, ${clip(d.subtitle, 200)}, ${honoree}, ${clip(d.date, 80)},
             ${clip(d.location, 200)}, ${JSON.stringify(theme)}::jsonb)
   `;
   const { rows } = await sql`SELECT * FROM ceremonies WHERE id = ${id}`;
@@ -62,8 +64,9 @@ export async function updateCeremony(id: string, d: any): Promise<Ceremony | nul
   const cur = rowToCeremony(rows[0]);
   const type = TYPES.includes(d?.type) ? (d.type as CeremonyType) : cur.type;
   const theme = buildTheme(type, { ...cur.theme, ...(d?.theme || {}) });
+  const mode: CeremonyMode = type === 'mariage' ? (MODES.includes(d?.mode) ? d.mode : cur.mode) : 'guestbook';
   await sql`
-    UPDATE ceremonies SET type = ${type},
+    UPDATE ceremonies SET type = ${type}, mode = ${mode},
       title = ${clip(d.title, 160) || cur.title},
       subtitle = ${typeof d.subtitle === 'string' ? clip(d.subtitle, 200) : cur.subtitle},
       honoree_name = ${clip(d.honoreeName, 160) || cur.honoreeName},
@@ -172,12 +175,12 @@ export async function resetGroupCode(id: string): Promise<string | null> {
 // ---------- Invitation publique ----------
 export async function getPublicInvite(slug: string): Promise<PublicInvite | null> {
   const { rows } = await sql`
-    SELECT g.*, c.type AS c_type, c.title AS c_title, c.subtitle AS c_subtitle, c.honoree_name AS c_honoree,
+    SELECT g.*, c.mode AS c_mode, c.type AS c_type, c.title AS c_title, c.subtitle AS c_subtitle, c.honoree_name AS c_honoree,
            c.event_date AS c_date, c.location AS c_location, c.theme AS c_theme
     FROM groups g JOIN ceremonies c ON c.id = g.ceremony_id WHERE g.invite_slug = ${slug}
   `;
   const r = rows[0];
-  if (!r) return null;
+  if (!r || r.c_mode === 'invitation') return null; // mariage « invitation seule » : pas de livre d'or
   const theme: ThemeConfig = buildTheme(r.c_type, { ...(r.c_theme || {}), ...(r.theme_overrides || {}) });
   return {
     slug: r.invite_slug, groupName: r.name, customIntro: r.custom_intro, customPrompt: r.custom_prompt,
@@ -190,6 +193,9 @@ export async function getPublicInvite(slug: string): Promise<PublicInvite | null
 }
 
 export async function getGroupIdBySlug(slug: string): Promise<{ id: string; allowPhotos: boolean; isClosed: boolean } | null> {
-  const { rows } = await sql`SELECT id, allow_photos, is_closed FROM groups WHERE invite_slug = ${slug}`;
+  const { rows } = await sql`
+    SELECT g.id, g.allow_photos, g.is_closed FROM groups g JOIN ceremonies c ON c.id = g.ceremony_id
+    WHERE g.invite_slug = ${slug} AND c.mode <> 'invitation'
+  `;
   return rows[0] ? { id: rows[0].id, allowPhotos: rows[0].allow_photos, isClosed: rows[0].is_closed } : null;
 }

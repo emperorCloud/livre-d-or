@@ -63,6 +63,7 @@ export default function AdminView(p: Props) {
               <div className="p-5 flex flex-wrap items-start justify-between gap-3 border-b border-stone-100">
                 <div className="space-y-1">
                   <span className={`inline-block text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full ${badge.cls}`}>{badge.label}</span>
+                  {c.type === 'mariage' && <span className="ml-2 text-[10px] uppercase tracking-wider font-semibold text-amber-900">{c.mode === 'both' ? "Livre d'or + Invitations" : c.mode === 'invitation' ? 'Invitations' : "Livre d'or"}</span>}
                   <h2 className="text-xl font-serif-cormorant font-bold">{c.title}</h2>
                   <p className="text-xs text-stone-600">{c.honoreeName}{c.date ? ` · ${c.date}` : ''}{c.location ? ` · ${c.location}` : ''}</p>
                 </div>
