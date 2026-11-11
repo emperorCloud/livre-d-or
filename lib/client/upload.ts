@@ -56,3 +56,9 @@ export async function uploadFeaturedPhoto(file: File, ratio: FeaturedRatio) {
   const url = await uploadJpeg(p.full, 'featured');
   return { url, width: p.width, height: p.height };
 }
+
+/** Image du contenu de l'invitation (photos de l'histoire, cadeaux, couverture…) : réduite dans le navigateur, sans contrainte de format. */
+export async function uploadConfigImage(file: File): Promise<string> {
+  const p = await processPhoto(file);
+  return uploadJpeg(p.full, 'featured'); // réservé aux sessions responsable / admin côté serveur
+}

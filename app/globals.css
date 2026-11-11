@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
+  --font-serif: var(--font-cormorant), Georgia, Cambria, serif;
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -10,4 +11,11 @@
 
 @media print {
   .no-print { display: none !important; }
+}
+
+/* Feuille d'émargement imprimable (gestionnaire d'invitations) */
+.print-only { display: none; }
+@media print {
+  .print-only { display: block !important; }
+  .print-break-inside-avoid { break-inside: avoid; }
 }

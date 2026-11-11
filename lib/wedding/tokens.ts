@@ -5,8 +5,9 @@ export function newGuestToken(): string {
   return randomBytes(18).toString('base64url');
 }
 
-// Code du billet (contenu du QR) : distinct du jeton du lien, pour qu'une capture d'écran du billet ne révèle
-// jamais le lien personnel. 10 caractères sur 32 symboles sans ambiguïté (pas de 0/O/1/I) = 50 bits.
+// Code du billet (contenu du QR) : distinct du jeton du lien, pour qu'une capture d'écran du billet ne révèle jamais le
+// lien personnel. 10 caractères sur 32 symboles = 50 bits. (Copie volontaire de l'alphabet de format.ts, qui reste sans
+// dépendance Node : un test vérifie que les deux sont identiques.)
 export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function newTicketCode(): string {
   const b = randomBytes(10);

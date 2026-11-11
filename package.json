@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:logic": "node --experimental-strip-types scripts/test-pdf-logic.mts && node --experimental-strip-types scripts/test-invitations.mts",
+    "test:logic": "node --experimental-strip-types scripts/test-pdf-logic.mts && node --experimental-strip-types scripts/test-wedding.mts",
     "pdf:sample": "tsx --tsconfig tsconfig.scripts.json scripts/pdf-sample.tsx",
     "migrate:storage": "node --env-file=.env.local --experimental-strip-types scripts/migrate-storage.mts"
   },
@@ -31,7 +31,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^22.20.5",
+    "@types/node": "^20.5.6",
     "@types/qrcode": "^1.5.4",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",

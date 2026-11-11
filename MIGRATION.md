@@ -64,34 +64,39 @@ dans `app/api/upload` et `app/api/entries`). La phase 2 portera l'interface.
 
 ---
 
-# Mariage — étape 1 : formule Livre d'or / Invitation / Les deux
+# Mariage — formule Livre d'or / Invitation / Les deux + gestionnaire d'invitations complet
 
 ## Base de données
-Exécuter dans Neon **avant** de déployer : `lib/migrations/006_mariage_invitations.sql` (additive, rejouable).
+Exécuter dans Neon **avant** de déployer : `lib/migrations/006_mariage.sql` (additive, rejouable).
+Elle ajoute la colonne `ceremonies.mode` et 5 tables : `wedding_config`, `wedding_guests`, `wedding_announcements`, `wedding_messages`, `wedding_gift_pledges`.
+Si une version précédente de cette migration avait créé `invitation_guests`, cette table n'est plus utilisée (`DROP TABLE IF EXISTS invitation_guests;`).
 
-## Ce qui est livré
-- **Formulaire de création/modification d'une cérémonie** : pour le type *Mariage*, choix de la formule **Livre d'or / Invitation / Les deux**
-  (les autres types gardent le livre d'or). La carte admin indique la formule.
-- **1 mariage = 1 responsable.** Le « dossier du mariage » (le groupe créé avec la cérémonie) porte le code du responsable, attribué par l'admin.
-- **Espace responsable** : onglets *Livre d'or* et *Invitations* selon la formule. La photo à la une est commune.
-- **Invitations** : le responsable ajoute ses invités (nom d'invitation, catégorie libre, nombre de personnes prévues, table, téléphone, e-mail),
-  suit les réponses, copie le **lien personnel** (`/inv/<jeton>`) ou l'envoie par WhatsApp. L'admin peut faire de même depuis « Gérer ».
-- **Page personnelle de l'invité** : le grand jour (photo à la une, date, lieu), sa réponse (présent / peut-être / absent, nombre de personnes,
-  régime, allergies, petit mot), son **billet QR** (activé quand il répond « oui »).
-- **Deux liens séparés** : lien du livre d'or unique pour tous (celui du groupe), lien d'invitation personnel par invité.
-  Un mariage en « Invitation » seule n'a pas de page livre d'or ; en « Livre d'or » seul, les liens personnels cessent de fonctionner.
+## Formule
+Pour le type *Mariage*, le formulaire de cérémonie propose **Livre d'or / Invitation / Les deux**. Un mariage = un responsable (le « dossier du mariage »).
+L'espace responsable affiche les onglets correspondants ; la photo à la une est commune. Deux liens séparés : livre d'or (unique) et invitation (personnel).
 
-## Sécurité
-- Jeton personnel : 144 bits aléatoires. Le serveur ne renvoie à l'invité que **sa** fiche (jamais la liste, ni d'e-mail, ni de jeton d'autrui).
-- Le code du billet (QR) est distinct du jeton du lien : une capture du billet ne révèle pas le lien.
-- Un responsable ne peut lire ni modifier que les invités de **son** mariage (contrôlé côté serveur à chaque requête).
-- Réponses validées côté serveur : jamais plus de personnes que prévu. Limites de débit sur la consultation et les réponses.
-- Pages personnelles : `noindex`, pas de transmission du jeton aux sites externes.
+## Gestionnaire d'invitations (repris du projet modèle, écran par écran)
+Onglet *Invitations* de l'espace responsable (et de « Gérer » côté admin) :
+**Invités** (liste, ajout, modification, statistiques, filtres, plan de tables, liens personnels, WhatsApp) · **Personnalisation** (couple, lieu, programme,
+histoire et photos, cadeaux et liste de cadeaux, dress code, contacts, tables, musique, apparence) · **Émargement** (scan caméra ou saisie du code, annulation) ·
+**Annonces** · **Discussions** (général, covoiturage, logement, témoins) · **Exports** (CSV, feuille d'émargement imprimable) · actualisation automatique.
+Côté invité (`/inv/<jeton>`) : le grand jour, programme, histoire, cadeaux, infos, réponse (par événement, accompagnant, enfants, régime, allergies, représentant),
+billet QR, annonces, discussions, musique.
+
+## Ce qui diffère du projet modèle (sécurité et configuration)
+- Authentification et droits par mariage : le responsable ne voit et ne modifie que SON mariage ; l'admin précise lequel.
+- L'invité ne reçoit que SA fiche (jamais la liste), via un jeton de 144 bits ; le code du billet (QR) est distinct du lien personnel.
+- Toutes les données entrantes sont validées (listes blanches, longueurs, liens http(s), images de notre stockage uniquement).
+- Base Neon à la place d'un fichier JSON ; images sur Blob/R2 à la place du base64 ; actualisation régulière à la place du WebSocket.
+- Catégories libres et **présence par événement liée au programme configuré** (plus de liste figée) ; aucun nom, lieu, date ou numéro d'exemple.
+- Émargement atomique : deux scanners ne peuvent pas valider le même billet deux fois.
+
+## Limites connues
+- **Envoi d'un fichier audio** pour la musique : pas encore disponible (choisir un morceau de la liste ou coller un lien https).
+- **Scan caméra** : utilise le détecteur natif du navigateur (Chrome, Android). Sur iPhone/Safari, utiliser la saisie du code ; un décodeur de secours (`jsqr`) peut être ajouté.
+- Actualisation toutes les 5 s (responsable) / 10 s (invité), pas de WebSocket.
+- La date de la fête est lue depuis la cérémonie si elle est au format reconnu, sinon une date provisoire est utilisée : à régler dans *Personnalisation*.
 
 ## À vérifier chez vous
-`npm install`, `npm run lint`, `npm run test:logic`. Puis : créer un mariage « Les deux » → récupérer le code responsable → se connecter → onglet Invitations → ajouter un invité → ouvrir son lien → répondre → voir le billet.
-
-## Prochaines étapes
-2. Import CSV, statistiques détaillées, **émargement par caméra** (code du billet), exports et feuille imprimable.
-3. Contenu de l'invitation : programme par événement, histoire, cadeaux, dress code, contacts, compte à rebours, musique, anglais.
-4. Annonces, messages, plan de table, liste de cadeaux.
+`npm install`, `npm run lint`, `npm run test:logic`. Puis : créer un mariage « Les deux » → code du responsable → onglet *Invitations* → *Personnalisation* (couple, programme)
+→ ajouter un invité → ouvrir son lien → répondre → voir le billet → *Émargement* : saisir le code du billet.

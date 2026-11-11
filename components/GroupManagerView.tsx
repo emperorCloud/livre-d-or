@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import InvitationManager from './InvitationManager';
+import WeddingOrganizer from './WeddingOrganizer';
 import { ArrowLeft, BookOpen, Check, Copy, ExternalLink, Pin, QrCode, Trash2, Eye, EyeOff } from 'lucide-react';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry, type ThemeConfig } from '@/lib/types';
 import { FONTS, PAPERS } from '@/lib/client/themeStyles';
@@ -99,7 +99,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         <FeaturedPhotoEditor group={draft} onChange={patch} />
       </section>
 
-      {hasInv && tab === 'inv' && <InvitationManager ceremony={ceremony} isAdmin={!!onBack} />}
+      {hasInv && tab === 'inv' && <WeddingOrganizer ceremony={ceremony} isAdmin={!!onBack} />}
 
       {showBook && (
       <section className={section}>
