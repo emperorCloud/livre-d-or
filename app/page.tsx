@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSettings } from '@/lib/settingsDb';
 import { getSession } from '@/lib/auth';
 import { siteUrl } from '@/lib/seo';
-import { faq } from '@/lib/homeContent';
+import { faq, SERVICE_PAGES } from '@/lib/homeContent';
 import type { SessionInfo } from '@/lib/types';
 import AppShell from '@/components/AppShell';
 
@@ -22,7 +22,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'Organization', '@id': `${base}/#organization`, name: settings.brandName, url: base, logo: `${base}/apple-icon` },
+      {
+        '@type': ['Organization', 'ProfessionalService'], '@id': `${base}/#organization`, name: settings.brandName, url: base, logo: `${base}/apple-icon`,
+        description: settings.welcomeText, slogan: settings.brandTagline,
+        ...(settings.serviceArea ? { areaServed: settings.serviceArea } : {}),
+        ...(settings.contactEmail ? { email: settings.contactEmail } : {}),
+        ...(settings.contactWhatsapp ? { telephone: `+${settings.contactWhatsapp}` } : {}),
+        hasOfferCatalog: { '@type': 'OfferCatalog', name: 'Événements organisés', itemListElement: SERVICE_PAGES.map((s) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: s.metaTitle, url: `${base}/evenements/${s.slug}` } })) },
+      },
       { '@type': 'WebSite', '@id': `${base}/#website`, url: base, name: settings.brandName, description: settings.welcomeText, inLanguage: 'fr', publisher: { '@id': `${base}/#organization` } },
       { '@type': 'FAQPage', mainEntity: faq(settings.brandName).map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
     ],

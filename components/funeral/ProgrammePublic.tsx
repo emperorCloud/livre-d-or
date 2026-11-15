@@ -1,13 +1,14 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpen, Bell, CalendarPlus, Clock, Flame, HandHeart, Printer, Share2, Users, Bus as BusIcon, CalendarDays } from 'lucide-react';
+import { Bell, CalendarPlus, Clock, Flame, HandHeart, Printer, Share2, Users, Bus as BusIcon, CalendarDays } from 'lucide-react';
 import { EVENT_CATEGORIES, type PublicProgramme } from '@/lib/funeral/types';
 import { frDate, frLongDate, frTime, telHref } from '@/lib/funeral/format';
 import { downloadIcs, printBooklet } from '@/lib/funeral/print';
 import { programmeApi } from '@/lib/funeral/client';
 import { copyText } from '@/lib/client/links';
 import { ConvoisPanel, DonsPanel, MapLink } from './PublicPanels';
-import { V } from './ui';
+import { ItinerarySection } from './Itineraries';
+import { V, themeStyle } from './ui';
 
 type Tab = 'programme' | 'faire-part' | 'convois' | 'dons';
 const TABS: { id: Tab; label: string; icon: typeof CalendarDays }[] = [
@@ -67,7 +68,7 @@ export default function ProgrammePublic({ initial }: { initial: PublicProgramme 
   );
 
   return (
-    <div className={V.page}>
+    <div className={V.page} style={themeStyle(pr.pageColor)}>
       {notices.map((n) => (
         <div key={n.id} role="status" className="bg-amber-200/15 border-b border-amber-200/30 px-4 py-2.5 text-sm flex items-start gap-2 justify-center text-amber-100">
           <Bell className="w-4 h-4 mt-0.5 shrink-0" /><span><b>{n.title}</b>{n.title && n.message ? ' — ' : ''}{n.message}</span>
@@ -84,11 +85,10 @@ export default function ProgrammePublic({ initial }: { initial: PublicProgramme 
         <div className="flex flex-wrap justify-center gap-2 mt-6">
           <button onClick={() => printBooklet(p)} className={V.btnGhost}><Printer className="w-3.5 h-3.5" />Livret imprimable</button>
           <button onClick={share} className={V.btnGhost}><Share2 className="w-3.5 h-3.5" />{shared ? 'Lien copié ✓' : 'Partager'}</button>
-          {p.hasBook && <a href={`/i/${p.slug}`} className={V.btnGhost}><BookOpen className="w-3.5 h-3.5" />Livre d’or</a>}
         </div>
       </header>
 
-      <nav aria-label="Sections" className="sticky top-0 z-30 backdrop-blur bg-[#1A0B2E]/85 border-y border-white/10">
+      <nav aria-label="Sections" className="sticky top-0 z-30 backdrop-blur bg-[var(--pg-from,#1A0B2E)]/85 border-y border-white/10">
         <div className="max-w-3xl mx-auto flex">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => go(id)} aria-current={tab === id} className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${tab === id ? 'border-violet-300 text-violet-50' : 'border-transparent text-violet-300/70 hover:text-violet-100'}`}>
@@ -111,6 +111,7 @@ export default function ProgrammePublic({ initial }: { initial: PublicProgramme 
             </div>
           ))}
           {undated.length > 0 && <div className="space-y-3">{undated.map(eventCard)}</div>}
+          <ItinerarySection items={p.config.itineraries} honoree={p.ceremony.honoreeName} />
           {pr.dressCodeAdvice && <div className={`${V.card} p-5`}><p className={`text-xs uppercase tracking-widest ${V.muted} mb-1`}>Tenue conseillée</p><p className="text-sm whitespace-pre-line">{pr.dressCodeAdvice}</p></div>}
           {pr.biography && <div className="space-y-2"><h3 className="text-sm uppercase tracking-widest text-violet-300">Son parcours</h3><p className="text-sm leading-relaxed text-violet-100/90 whitespace-pre-line">{pr.biography}</p></div>}
         </section>
@@ -119,7 +120,7 @@ export default function ProgrammePublic({ initial }: { initial: PublicProgramme 
           <h2 id="h-fp" className="text-xl font-semibold font-serif-cormorant text-center">Faire-part</h2>
           {p.config.fairePart.header && <p className="text-center text-sm leading-relaxed whitespace-pre-line">{p.config.fairePart.header}</p>}
           {p.config.fairePart.groups.map((g) => (
-            <div key={g.id} className={`${V.card} p-5`}><h3 className="text-xs uppercase tracking-widest text-violet-300 mb-2">{g.title}</h3><p className="text-sm leading-relaxed">{g.members.join(' · ')}</p></div>
+            <div key={g.id} className={`${V.card} p-5`}><h3 className="text-xs uppercase tracking-widest text-violet-300 mb-2">{g.title}</h3><ul className="space-y-1.5 text-sm">{g.members.map((m, i) => <li key={i} className="flex gap-2.5"><span aria-hidden className="mt-[0.55em] w-1 h-1 rounded-full bg-violet-300/70 shrink-0" /><span>{m}</span></li>)}</ul></div>
           ))}
           {p.config.fairePart.footer && <p className={`text-center text-sm italic ${V.muted} whitespace-pre-line`}>{p.config.fairePart.footer}</p>}
           {!p.config.fairePart.header && p.config.fairePart.groups.length === 0 && <p className={`${V.card} p-6 text-sm ${V.muted}`}>Le faire-part sera publié très bientôt.</p>}

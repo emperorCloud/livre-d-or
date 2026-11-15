@@ -7,6 +7,8 @@
 
 .font-serif-cormorant { font-family: var(--font-cormorant), Georgia, serif; }
 .font-serif-cinzel { font-family: var(--font-cinzel), Georgia, serif; }
+/* Écriture manuscrite : noms des mariés, accroches (jamais pour du texte courant) */
+.font-script { font-family: var(--font-script), 'Brush Script MT', cursive; font-weight: 400; }
 .font-serif-lora { font-family: var(--font-lora), Georgia, serif; }
 
 @media print {

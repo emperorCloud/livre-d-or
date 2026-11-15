@@ -3,14 +3,15 @@
 // Le nom et les textes ci-dessous ne sont que des valeurs par défaut (écrasées par « Paramètres du site »).
 export const BRAND = {
   name: 'CardEvents',
-  tagline: "Livres d'or & registres cérémoniels",
+  tagline: "Agence d'événementiels : organisation, décoration et mise en œuvre",
   description:
-    "Créez un livre d'or en ligne pour un deuil, un mariage, un anniversaire ou un départ à la retraite : lien privé et QR code, messages et photos des proches, livre PDF A4 haute définition.",
+    "Agence d'événementiels : nous organisons, embellissons et mettons en œuvre vos cérémonies sur le terrain et en numérique : mariage, deuil et hommage, anniversaire, baptême, départ à la retraite. Invitations en ligne, programme, billets QR et livre d'or.",
   keywords: [
-    "livre d'or en ligne", "livre d'or numérique", 'livre d’or cérémonie', 'hommage en ligne', 'livre d’or mariage',
-    'livre d’or deuil', 'livre d’or anniversaire', 'livre d’or départ retraite', 'QR code livre d’or', 'livre photo PDF',
+    'agence événementielle', "organisation d'événements", 'organisation de mariage', 'organisation de deuil', "organisation d'obsèques", 'hommage en ligne',
+    "organisation d'anniversaire", 'décoration événementielle', 'décoration florale mariage', 'coordination jour J', 'invitation numérique', 'faire-part en ligne',
+    'programme des obsèques en ligne', "livre d'or en ligne", 'livre souvenir PDF', 'billet QR invité', 'wedding planner',
   ],
-  themeColor: '#1c1917',
+  themeColor: '#C65E7E',
 } as const;
 
 /** Initiales du badge d'en-tête / du favicon : « CardEvents » → « CE », « Livre d'Or » → « LO ». */

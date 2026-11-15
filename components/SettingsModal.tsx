@@ -10,6 +10,9 @@ const FIELDS: { key: keyof SiteSettings; label: string; hint?: string; area?: bo
   { key: 'welcomeKicker', label: "Accroche de la page d'accueil" },
   { key: 'welcomeTitle', label: "Titre de la page d'accueil" },
   { key: 'welcomeText', label: "Texte de la page d'accueil", area: true },
+  { key: 'contactWhatsapp', label: 'WhatsApp de l’agence', hint: 'Numéro international, chiffres seulement (ex. 237600000000). Affiche le bouton « Nous écrire » sur le site.' },
+  { key: 'contactEmail', label: 'E-mail de contact' },
+  { key: 'serviceArea', label: 'Zone d’intervention', hint: 'Ex. « Douala et tout le Cameroun ». Affichée sur le site et utilisée pour le référencement local.' },
   { key: 'footerLeft', label: 'Pied de page — gauche' },
   { key: 'footerRight', label: 'Pied de page — droite' },
 ];

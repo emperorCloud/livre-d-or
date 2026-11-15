@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { Cormorant_Garamond, Cinzel, Lora, Plus_Jakarta_Sans } from 'next/font/google';
+import { Cormorant_Garamond, Cinzel, Lora, Plus_Jakarta_Sans, Great_Vibes } from 'next/font/google';
 import { getSettings } from '@/lib/settingsDb';
 import { BRAND } from '@/lib/brand';
 import { siteUrl, trimDescription } from '@/lib/seo';
@@ -8,6 +8,7 @@ import { siteUrl, trimDescription } from '@/lib/seo';
 const cormorant = Cormorant_Garamond({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], variable: '--font-cormorant', display: 'swap' });
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-cinzel', display: 'swap' });
 const lora = Lora({ subsets: ['latin'], weight: ['400', '500', '600'], style: ['normal', 'italic'], variable: '--font-lora', display: 'swap' });
+const script = Great_Vibes({ subsets: ['latin'], weight: '400', variable: '--font-script', display: 'swap' });
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${cormorant.variable} ${cinzel.variable} ${lora.variable} ${jakarta.variable}`}>
+    <html lang="fr" className={`${cormorant.variable} ${cinzel.variable} ${lora.variable} ${jakarta.variable} ${script.variable}`}>
       <body className="min-h-screen bg-stone-100/60 text-stone-900 font-sans antialiased selection:bg-amber-100 selection:text-amber-950">
         {children}
       </body>

@@ -1,8 +1,10 @@
 'use client';
 import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, Plus, Trash2 } from 'lucide-react';
-import { EVENT_CATEGORIES, type FuneralConfig, type FuneralEvent, type Notice } from '@/lib/funeral/types';
-import { uploadConfigImage } from '@/lib/client/upload';
+import { EVENT_CATEGORIES, type FuneralConfig, type FuneralEvent, type Itinerary, type Notice } from '@/lib/funeral/types';
+import { uploadConfigImage, uploadItineraryImage } from '@/lib/client/upload';
+import { ITINERARY_HELP } from '@/lib/client/images';
+import { DEFAULT_PAGE_COLOR, PAGE_COLORS, isValidPageColor } from '@/lib/funeral/theme';
 import { V, VField } from '../ui';
 import { newId, PayMethodsEditor, Section } from './shared';
 
@@ -42,6 +44,19 @@ export function IdentityTab({ config, onChange }: Props) {
         <VField label="Mot de la famille"><textarea rows={4} className={V.input} value={pr.familyMessage} onChange={(e) => set('familyMessage', e.target.value)} /></VField>
         <VField label="Parcours / biographie"><textarea rows={6} className={V.input} value={pr.biography} onChange={(e) => set('biography', e.target.value)} /></VField>
         <VField label="Tenue conseillée"><textarea rows={2} className={V.input} value={pr.dressCodeAdvice} onChange={(e) => set('dressCodeAdvice', e.target.value)} /></VField>
+      </Section>
+      <Section title="Couleur de la page" hint="Fond de la page publique du programme. Choisissez une couleur foncée : le texte reste clair et lisible.">
+        <div className="flex flex-wrap items-center gap-2.5" role="radiogroup" aria-label="Couleur de fond">
+          {PAGE_COLORS.map((c) => (
+            <button key={c.hex} type="button" role="radio" aria-checked={pr.pageColor === c.hex} aria-label={c.name} title={c.name} onClick={() => set('pageColor', c.hex)}
+              className={`w-11 h-11 rounded-full border-2 transition ${pr.pageColor === c.hex ? 'border-white scale-110 shadow-lg' : 'border-white/25 hover:border-white/60'}`} style={{ background: c.hex }} />
+          ))}
+          <label className="flex items-center gap-2 text-xs text-violet-100 ml-1">Autre couleur
+            <input type="color" value={isValidPageColor(pr.pageColor) ? pr.pageColor : DEFAULT_PAGE_COLOR} onChange={(e) => set('pageColor', e.target.value.toUpperCase())} className="w-11 h-11 rounded-full bg-transparent border-2 border-white/25 cursor-pointer p-0.5" aria-label="Choisir une autre couleur" />
+          </label>
+        </div>
+        {!isValidPageColor(pr.pageColor) && <p className="text-xs text-amber-200">Cette couleur est trop claire : le violet par défaut sera utilisé. Choisissez une teinte plus foncée.</p>}
+        <p className={`text-xs ${V.muted}`}>Couleur actuelle : {pr.pageColor}. Le résultat se voit tout de suite dans cet espace ; il est publié après « Enregistrer ».</p>
       </Section>
       <Section title="Contact & monnaie">
         <div className="grid sm:grid-cols-3 gap-4">
@@ -120,6 +135,8 @@ export function ProgrammeTab({ config, onChange }: Props) {
         {ev.length < 60 && <button type="button" className={V.btnGhost} onClick={() => onChange({ ...config, events: [...ev, blankEvent()] })}><Plus className="w-3.5 h-3.5" />Ajouter une cérémonie</button>}
       </Section>
 
+      <ItinerariesEditor config={config} onChange={onChange} />
+
       <Section title="Rappels & alertes" hint="Bandeau affiché en haut de la page publique à partir de la date choisie (heure du Cameroun). Vide = tout de suite.">
         {nt.map((n, i) => (
           <div key={n.id} className="grid sm:grid-cols-2 gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.04]">
@@ -133,5 +150,47 @@ export function ProgrammeTab({ config, onChange }: Props) {
         {nt.length < 20 && <button type="button" className={V.btnGhost} onClick={() => onChange({ ...config, notices: [...nt, { id: newId(), title: '', message: '', showFrom: '', active: true }] })}><Plus className="w-3.5 h-3.5" />Ajouter un rappel</button>}
       </Section>
     </div>
+  );
+}
+
+function ItinerariesEditor({ config, onChange }: Props) {
+  const items = config.itineraries;
+  const file = useRef<HTMLInputElement>(null);
+  const [up, setUp] = useState(false), [err, setErr] = useState('');
+  const set = (i: number, p: Partial<Itinerary>) => onChange({ ...config, itineraries: items.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []); e.target.value = '';
+    if (!files.length) return;
+    setUp(true); setErr('');
+    const added: Itinerary[] = [];
+    try {
+      for (const f of files.slice(0, 6 - items.length)) added.push({ id: newId(), title: '', description: '', imageUrl: await uploadItineraryImage(f) });
+    } catch (x) { setErr(x instanceof Error ? x.message : 'Envoi impossible.'); }
+    if (added.length) onChange({ ...config, itineraries: [...items, ...added] });
+    setUp(false);
+  };
+  return (
+    <Section title="Itinéraires & plans d'accès" hint={`Ajoutez vos plans (ex. « Plan de localisation pour le village ») sous forme d'images. ${ITINERARY_HELP}`}>
+      {items.map((it, i) => (
+        <div key={it.id} className="grid sm:grid-cols-[10rem_1fr] gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.04]">
+          <img src={it.imageUrl} alt="" className="w-full sm:w-40 h-32 object-contain rounded-lg bg-white" />
+          <div className="space-y-2">
+            <input className={V.input} placeholder="Titre (ex. Plan de localisation pour Loum)" value={it.title} onChange={(e) => set(i, { title: e.target.value })} />
+            <textarea rows={2} className={V.input} placeholder="Précisions (facultatif) : « La maison est derrière le lieu-dit… »" value={it.description} onChange={(e) => set(i, { description: e.target.value })} />
+            <div className="flex gap-2">
+              <button type="button" disabled={i === 0} className={V.btnGhost} onClick={() => onChange({ ...config, itineraries: items.map((_, j, a) => (j === i - 1 ? a[i] : j === i ? a[i - 1] : a[j])) })}>↑ Monter</button>
+              <button type="button" className={V.danger} onClick={() => onChange({ ...config, itineraries: items.filter((_, j) => j !== i) })}><Trash2 className="w-3.5 h-3.5" />Retirer</button>
+            </div>
+          </div>
+        </div>
+      ))}
+      {err && <p role="alert" className="text-xs text-red-200 bg-red-500/15 border border-red-300/30 rounded-lg px-3 py-2">{err}</p>}
+      {items.length < 6 && (
+        <>
+          <input ref={file} type="file" accept="image/*" multiple className="hidden" onChange={pick} />
+          <button type="button" className={V.btnGhost} disabled={up} onClick={() => file.current?.click()}>{up ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}{up ? 'Envoi…' : `Ajouter une image (${items.length}/6)`}</button>
+        </>
+      )}
+    </Section>
   );
 }

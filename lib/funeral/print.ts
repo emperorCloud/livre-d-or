@@ -33,12 +33,14 @@ export function printBooklet(p: PublicProgramme) {
     <div class="ev"><b>${esc(frTime(e.startTime))}${e.endTime ? ' – ' + esc(frTime(e.endTime)) : ''} · ${esc(e.title)}</b> <span class="muted">${esc(catLabel(e.category))}</span><br>
     ${e.locationName || e.locationAddress ? `<span class="muted">${esc([e.locationName, e.locationAddress].filter(Boolean).join(' — '))}</span><br>` : ''}
     ${e.description ? nl2br(e.description) + '<br>' : ''}${e.leader ? `<span class="muted">Officiant : ${esc(e.leader)}</span> ` : ''}${e.dressCode ? `<span class="muted">Tenue : ${esc(e.dressCode)}</span>` : ''}</div>`).join('')).join('');
-  const groups = p.config.fairePart.groups.map((g) => `<div class="ev"><b>${esc(g.title)}</b><br>${esc(g.members.join(' · '))}</div>`).join('');
+  const groups = p.config.fairePart.groups.map((g) => `<div class="ev"><b>${esc(g.title)}</b><ul style="margin:4px 0 0 18px;padding:0">${g.members.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></div>`).join('');
+  const maps = p.config.itineraries.map((it) => `<div class="ev" style="text-align:center">${it.title ? `<b>${esc(it.title)}</b><br>` : ''}<img src="${esc(it.imageUrl)}" alt="${esc(it.title || 'Plan d’accès')}" style="max-width:100%;max-height:520px">${it.description ? `<br><span class="muted">${esc(it.description)}</span>` : ''}</div>`).join('');
   openPrint(`Livret — ${p.ceremony.honoreeName}`, `
     <p class="sub">Programme des obsèques</p>
     <h1>${esc([pr.titles, p.ceremony.honoreeName].filter(Boolean).join(' '))}</h1>
     <p class="muted">${esc([pr.birthDate && frDate(pr.birthDate), pr.deathDate && frDate(pr.deathDate)].filter(Boolean).join(' — '))}${pr.epitaph ? '<br><i>' + esc(pr.epitaph) + '</i>' : ''}</p>
     ${pr.familyMessage ? `<p>${nl2br(pr.familyMessage)}</p>` : ''}${days}
+    ${maps ? `<h2>Itinéraires & plans d’accès</h2>${maps}` : ''}
     ${pr.dressCodeAdvice ? `<h2>Tenue conseillée</h2><p>${nl2br(pr.dressCodeAdvice)}</p>` : ''}
     ${groups ? `<h2>Faire-part</h2>${p.config.fairePart.header ? `<p>${nl2br(p.config.fairePart.header)}</p>` : ''}${groups}${p.config.fairePart.footer ? `<p>${nl2br(p.config.fairePart.footer)}</p>` : ''}` : ''}
     ${pr.contactPhone ? `<p class="muted">Contact famille : ${esc(pr.contactPhone)}</p>` : ''}`);

@@ -8,7 +8,7 @@ import { copyText } from '@/lib/client/links';
 import { IdentityTab, FairePartTab, ProgrammeTab } from './organizer/ConfigTabs';
 import { BusesTab } from './organizer/BusesTab';
 import { DonationsTab } from './organizer/DonationsTab';
-import { V } from './ui';
+import { V, themeStyle } from './ui';
 
 type Tab = 'identite' | 'faire-part' | 'programme' | 'convois' | 'dons';
 const TABS: { id: Tab; label: string; icon: typeof UserRound }[] = [
@@ -59,7 +59,7 @@ export default function ProgrammeOrganizer({ ceremony, group }: { ceremony: Cere
   const copy = async () => { if (await copyText(url)) { setCopied(true); setTimeout(() => setCopied(false), 1800); } };
 
   return (
-    <div className="rounded-3xl bg-gradient-to-b from-[#1A0B2E] via-[#22103F] to-[#12081F] text-violet-50 p-4 sm:p-6 space-y-5">
+    <div style={themeStyle((draft ?? state?.config)?.profile.pageColor ?? '')} className="rounded-3xl bg-gradient-to-b from-[var(--pg-from,#1A0B2E)] via-[var(--pg-via,#22103F)] to-[var(--pg-to,#12081F)] text-violet-50 p-4 sm:p-6 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><span className="text-[11px] uppercase tracking-[0.25em] text-violet-300 font-semibold">Programme des obsèques</span>
           <p className={`text-xs ${V.muted} mt-0.5 break-all`}>{url}</p></div>
@@ -82,7 +82,7 @@ export default function ProgrammeOrganizer({ ceremony, group }: { ceremony: Cere
           {tab === 'convois' && <BusesTab api={api} state={state} reload={reloadLive} currency={state.config.profile.currency} />}
           {tab === 'dons' && <DonationsTab api={api} state={state} reload={reloadLive} honoree={ceremony.honoreeName} />}
           {CONFIG_TABS.includes(tab) && (
-            <div className="sticky bottom-3 z-20 flex items-center justify-end gap-3 p-3 rounded-2xl border border-white/15 bg-[#1E0F36]/95 backdrop-blur">
+            <div className="sticky bottom-3 z-20 flex items-center justify-end gap-3 p-3 rounded-2xl border border-white/15 bg-[var(--pg-surface,#1E0F36)]/95 backdrop-blur">
               <span className={`text-xs ${dirty ? 'text-amber-200' : V.muted}`}>{dirty ? 'Modifications non enregistrées' : saved ? 'Enregistré ✓' : 'À jour'}</span>
               <button onClick={save} disabled={busy || !dirty} className={V.btn}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}Enregistrer</button>
             </div>

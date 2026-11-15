@@ -36,10 +36,16 @@ export interface FuneralProfile {
   donationsOpen: boolean; donationMethods: PayMethod[];
   /** Autorise Google à référencer la page publique du programme (sitemap + indexation). */
   searchIndexing: boolean;
+  /** Couleur de fond de la page publique (#RRGGBB sombre), choisie par le responsable. */
+  pageColor: string;
 }
+
+/** Plan d'accès ou itinéraire fourni sous forme d'image (ex. plan de localisation du village). */
+export interface Itinerary { id: string; title: string; description: string; imageUrl: string }
 
 export interface FuneralConfig {
   profile: FuneralProfile;
+  itineraries: Itinerary[];
   fairePart: { header: string; footer: string; groups: FairePartGroup[] };
   events: FuneralEvent[];
   notices: Notice[];

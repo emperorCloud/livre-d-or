@@ -128,7 +128,7 @@ export default function AppShell({ initialSettings, initialSession }: { initialS
         )}
       </div>
 
-      <SiteFooter settings={settings} />
+      <SiteFooter settings={settings} variant={session.role === 'none' ? 'light' : 'dark'} />
 
       {modal?.kind === 'login' && <LoginModal open initialTab={modal.tab} brandName={settings.brandName} onClose={() => setModal(null)} onLoggedIn={refreshSession} />}
       {modal?.kind === 'ceremony' && <CeremonyFormModal ceremony={modal.ceremony} onClose={() => setModal(null)} onSubmit={(v, g) => saveCeremony(modal.ceremony, v, g)} />}

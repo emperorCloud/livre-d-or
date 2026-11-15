@@ -1,5 +1,5 @@
 import type { GuestPhoto } from '@/lib/types';
-import { processPhoto, processFeatured, type FeaturedRatio } from './images';
+import { processItinerary, processPhoto, processFeatured, type FeaturedRatio } from './images';
 
 type Kind = 'photo' | 'thumb' | 'featured' | 'proof';
 const FOLDER: Record<Kind, string> = { photo: 'photos', thumb: 'thumbs', featured: 'featured', proof: 'proofs' };
@@ -68,4 +68,10 @@ export async function uploadProofImage(file: File, inviteSlug: string): Promise<
   if (!file.type.startsWith('image/')) throw new Error('Envoyez une capture ou une photo (JPEG, PNG…). Les PDF ne sont pas acceptés.');
   const p = await processPhoto(file);
   return uploadJpeg(p.full, 'proof', { inviteSlug });
+}
+
+/** Itinéraire / plan d'accès du programme de deuil (session responsable ou admin requise côté serveur). */
+export async function uploadItineraryImage(file: File): Promise<string> {
+  const p = await processItinerary(file);
+  return uploadJpeg(p.full, 'featured');
 }

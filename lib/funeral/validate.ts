@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { isOwnedStorageUrl } from '../storage';
+import { normalizePageColor } from './theme';
 import { EVENT_CATEGORIES, type Bus, type DonationMethod, type EventCategory, type FuneralConfig, type PayMethod, type Status } from './types';
 
 // Toute donnée entrante est filtrée ici : longueurs bornées, listes blanches, liens http(s), images de NOTRE stockage uniquement.
@@ -41,8 +42,9 @@ export function emptyConfig(): FuneralConfig {
   return {
     profile: {
       titles: '', birthDate: '', deathDate: '', hometown: '', residenceCity: '', photoUrl: '', epitaph: '', biography: '',
-      familyMessage: '', dressCodeAdvice: '', currency: 'FCFA', contactPhone: '', contactEmail: '', donationsOpen: true, donationMethods: [], searchIndexing: true,
+      familyMessage: '', dressCodeAdvice: '', currency: 'FCFA', contactPhone: '', contactEmail: '', donationsOpen: true, donationMethods: [], searchIndexing: true, pageColor: normalizePageColor(''),
     },
+    itineraries: [],
     fairePart: { header: '', footer: '', groups: [] },
     events: [], notices: [],
   };
@@ -61,8 +63,12 @@ export function cleanConfig(raw: unknown): Result<FuneralConfig> {
       epitaph: clip(p.epitaph, 300), biography: clip(p.biography, 6000), familyMessage: clip(p.familyMessage, 3000),
       dressCodeAdvice: clip(p.dressCodeAdvice, 600), currency: clip(p.currency, 12) || 'FCFA',
       contactPhone: phone(p.contactPhone), contactEmail: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '',
-      donationsOpen: bool(p.donationsOpen, true), donationMethods: payMethods(p.donationMethods), searchIndexing: bool(p.searchIndexing, true),
+      donationsOpen: bool(p.donationsOpen, true), donationMethods: payMethods(p.donationMethods), searchIndexing: bool(p.searchIndexing, true), pageColor: normalizePageColor(p.pageColor),
     },
+    itineraries: list(r.itineraries, 6).map((it) => {
+      const o = obj(it);
+      return { id: id(o.id), title: clip(o.title, 120), description: clip(o.description, 400), imageUrl: ownImage(o.imageUrl) };
+    }).filter((it) => it.imageUrl),
     fairePart: {
       header: clip(fp.header, 3000), footer: clip(fp.footer, 2000),
       groups: list(fp.groups, 40).map((g) => {

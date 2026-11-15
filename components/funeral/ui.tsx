@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 
 // Palette « violet profond » du programme de deuil. Tout le visuel du module passe par ces classes.
 export const V = {
-  page: 'min-h-screen bg-gradient-to-b from-[#1A0B2E] via-[#22103F] to-[#12081F] text-violet-50',
+  page: 'min-h-screen bg-gradient-to-b from-[var(--pg-from,#1A0B2E)] via-[var(--pg-via,#22103F)] to-[var(--pg-to,#12081F)] text-violet-50',
   card: 'rounded-2xl border border-white/10 bg-white/[0.06]',
   cardKey: 'rounded-2xl border border-amber-200/40 bg-gradient-to-br from-amber-200/10 to-white/[0.06]',
   muted: 'text-violet-200/70',
@@ -28,7 +28,7 @@ export function VField({ label, hint, children }: { label: string; hint?: string
 export function VModal({ title, kicker, onClose, children, wide }: { title: string; kicker?: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   return (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-y-auto">
-      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} my-auto rounded-2xl border border-white/15 bg-[#1E0F36] text-violet-50 shadow-2xl`}>
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} my-auto rounded-2xl border border-white/15 bg-[var(--pg-surface,#1E0F36)] text-violet-50 shadow-2xl`}>
         <div className="p-5 border-b border-white/10 flex items-start justify-between gap-3">
           <div>
             {kicker && <span className="text-[11px] uppercase tracking-[0.2em] text-violet-300 font-semibold block">{kicker}</span>}
@@ -41,6 +41,10 @@ export function VModal({ title, kicker, onClose, children, wide }: { title: stri
     </div>
   );
 }
+
+import { pageThemeVars } from '@/lib/funeral/theme';
+/** Style à poser sur le conteneur : applique la couleur choisie par le responsable à toute la page, fenêtres comprises. */
+export const themeStyle = (color: string) => pageThemeVars(color) as React.CSSProperties;
 
 export const STATUS_LABEL = { pending: 'En attente', confirmed: 'Confirmé', rejected: 'Refusé' } as const;
 export const STATUS_CLS = {

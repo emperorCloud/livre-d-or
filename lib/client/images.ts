@@ -77,3 +77,25 @@ export async function processFeatured(file: File, ratio: FeaturedRatio): Promise
     bmp.close();
   }
 }
+
+/** Image d'itinéraire / plan d'accès : texte fin à conserver lisible, donc plus grande qu'une photo ordinaire. */
+export const ITINERARY_SPEC = {
+  recommended: { landscape: [1600, 1200], portrait: [1200, 1600] },
+  minLongSide: 900, minShortSide: 600, storedMaxEdge: 2000, maxSourceMb: 40, maxFinalBytes: 2_300_000,
+} as const;
+export const ITINERARY_HELP = `Image conseillée : 1600 × 1200 px (paysage) ou 1200 × 1600 px (portrait). Minimum : 900 × 600 px. JPEG ou PNG, 40 Mo maximum ; elle est réduite à 2000 px sur le grand côté.`;
+
+export async function processItinerary(file: File): Promise<{ full: Blob; width: number; height: number }> {
+  checkFile(file);
+  const bmp = await decode(file);
+  try {
+    const long = Math.max(bmp.width, bmp.height), short = Math.min(bmp.width, bmp.height);
+    if (long < ITINERARY_SPEC.minLongSide || short < ITINERARY_SPEC.minShortSide) {
+      throw new Error(`Image trop petite : ${bmp.width}×${bmp.height} px reçus, minimum 900×600 px (idéal 1600×1200 px). Les textes du plan ne seraient pas lisibles.`);
+    }
+    let out = await toJpeg(bmp, ITINERARY_SPEC.storedMaxEdge, 0.86);
+    for (const q of [0.78, 0.7, 0.62]) { if (out.blob.size <= ITINERARY_SPEC.maxFinalBytes) break; out = await toJpeg(bmp, ITINERARY_SPEC.storedMaxEdge, q); }
+    if (out.blob.size > ITINERARY_SPEC.maxFinalBytes) throw new Error('Image trop détaillée après compression : choisissez une version plus simple ou plus petite.');
+    return { full: out.blob, width: out.width, height: out.height };
+  } finally { bmp.close(); }
+}

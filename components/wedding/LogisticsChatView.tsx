@@ -82,11 +82,11 @@ export const LogisticsChatView: React.FC<LogisticsChatViewProps> = ({
   return (
     <div className={`flex flex-col min-h-0 bg-white ${sheet ? 'h-full' : 'h-[min(72vh,680px)] rounded-2xl border border-slate-200 overflow-hidden'}`}>
       {/* En-tête */}
-      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-slate-100 bg-[#FAF7F2]">
+      <div className="shrink-0 px-4 pt-3 pb-2 border-b border-slate-100 bg-[#FFF7F9]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="font-serif text-lg font-bold text-[#2D2424] leading-tight">Discussions des invités</h3>
-            <p className="text-[11px] text-[#7A695B] truncate">Covoiturage, hébergement, questions pratiques</p>
+            <h3 className="font-serif text-lg font-bold text-[#4A2F38] leading-tight">Discussions des invités</h3>
+            <p className="text-[11px] text-[#8C7480] truncate">Covoiturage, hébergement, questions pratiques</p>
           </div>
           {onClose && <button type="button" onClick={onClose} aria-label="Fermer la discussion" className="p-2 -mr-1 rounded-full text-slate-500 hover:bg-black/5"><X className="w-5 h-5" /></button>}
         </div>
@@ -94,12 +94,12 @@ export const LogisticsChatView: React.FC<LogisticsChatViewProps> = ({
         <div role="tablist" aria-label="Salons" className="mt-2.5 -mx-1 px-1 flex gap-1.5 overflow-x-auto scrollbar-none">
           {channels.map((c) => (
             <button key={c.id} role="tab" aria-selected={channel === c.id} onClick={() => setChannel(c.id)}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${channel === c.id ? 'bg-[#234A38] border-[#234A38] text-white' : 'bg-white border-[#DDD1C4] text-[#4A3B32] hover:bg-[#F2ECE4]'}`}>
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${channel === c.id ? 'bg-[#C65E7E] border-[#C65E7E] text-white' : 'bg-white border-[#EFC8D4] text-[#5E4450] hover:bg-[#FDEBF0]'}`}>
               {c.icon}<span>{c.short}</span>{counts[c.id] > 0 && <span className={`text-[10px] px-1.5 rounded-full ${channel === c.id ? 'bg-white/25' : 'bg-slate-100 text-slate-600'}`}>{counts[c.id]}</span>}
             </button>
           ))}
         </div>
-        {current && <p className="text-[11px] text-[#7A695B] mt-2 leading-snug">{current.desc}</p>}
+        {current && <p className="text-[11px] text-[#8C7480] mt-2 leading-snug">{current.desc}</p>}
       </div>
 
       {/* Messages */}
@@ -131,7 +131,7 @@ export const LogisticsChatView: React.FC<LogisticsChatViewProps> = ({
                         <span className="text-slate-400">{hhmm(m.createdAt)}</span>
                       </div>
                     )}
-                    <div className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line break-words ${me ? 'bg-[#234A38] text-white rounded-br-md' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-md'}`}>{m.content}</div>
+                    <div className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-line break-words ${me ? 'bg-[#C65E7E] text-white rounded-br-md' : 'bg-white text-slate-800 border border-slate-200 rounded-bl-md'}`}>{m.content}</div>
                   </div>
                 </li>
               );
@@ -154,9 +154,9 @@ export const LogisticsChatView: React.FC<LogisticsChatViewProps> = ({
           <textarea ref={taRef} rows={1} value={text} maxLength={MAX} aria-label="Votre message" placeholder={`Message dans « ${current?.short ?? ''} »`}
             onChange={(e) => { setText(e.target.value); grow(); }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }}
-            className="flex-1 min-w-0 resize-none px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#234A38]/40" />
+            className="flex-1 min-w-0 resize-none px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C65E7E]/40" />
           <button type="submit" disabled={sending || !text.trim()} aria-label="Envoyer"
-            className="shrink-0 w-11 h-11 rounded-full bg-[#234A38] hover:bg-[#1B382B] disabled:opacity-40 text-white flex items-center justify-center transition"><Send className="w-4 h-4" /></button>
+            className="shrink-0 w-11 h-11 rounded-full bg-[#C65E7E] hover:bg-[#A94566] disabled:opacity-40 text-white flex items-center justify-center transition"><Send className="w-4 h-4" /></button>
         </div>
         {text.length > 800 && <p className="text-[10px] text-slate-400 text-right mt-1">{text.length}/{MAX}</p>}
       </form>
