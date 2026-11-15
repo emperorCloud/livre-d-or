@@ -63,8 +63,10 @@ export interface Guest {
   phone?: string;
   tableNumber: string;
   category: string; // libre : famille, amis, collègues…
-  rsvpStatus: RsvpStatus;
-  plusOneAllowed: boolean;
+  rsvpStatus: RsvpStatus; // réponse de l'invitation (agrégat des personnes) : voir rsvp.ts
+  guestRsvp: RsvpStatus; // 1re personne
+  partnerRsvp: RsvpStatus; // 2e personne (invitation couple uniquement)
+  plusOneAllowed: boolean; // true = invitation couple (deux personnes répondent chacune)
   plusOneConfirmed: boolean;
   plusOneName?: string;
   childrenCount: number;

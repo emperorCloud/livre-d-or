@@ -25,18 +25,23 @@ import {
   Bell,
   MessageSquare,
   X,
-  Gift
+  Gift,
+  Lock
 } from 'lucide-react';
 import type { Guest, WeddingConfig, TimelineEventItem, PhysicalGiftItem, Announcement, ChatMessage } from '@/lib/wedding/types';
 import { QrCodeDisplay } from './QrCodeDisplay';
-import { submitRsvp, proposeRepresentative, pledgePhysicalGift } from '@/lib/wedding/api';
+import { proposeRepresentative, pledgePhysicalGift } from '@/lib/wedding/api';
 
 // Date lisible de la fête, à partir de la configuration (jamais écrite en dur).
 const formatEventDate = (d: string) => {
   const t = new Date(d);
   return Number.isNaN(t.getTime()) ? '' : t.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 };
-import { LogisticsChatView } from './LogisticsChatView';
+import { ChatSheet } from './LogisticsChatView';
+import { GuestCtas } from './guest/GuestCtas';
+import { RsvpPanel } from './guest/RsvpPanel';
+import { TicketPanel } from './guest/TicketPanel';
+import { everyoneAnswered, hasTicket } from '@/lib/wedding/rsvp';
 
 interface GuestInvitationExperienceProps {
   config: WeddingConfig;
@@ -77,17 +82,6 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
   const [isAnnouncementsModalOpen, setIsAnnouncementsModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
-  // Form states for RSVP
-  const [rsvpStatus, setRsvpStatus] = useState<Guest['rsvpStatus']>(currentGuest.rsvpStatus);
-  const [attendingEvents, setAttendingEvents] = useState<Record<string, boolean>>(currentGuest.attendingEvents || {});
-  const [isSinglePerson, setIsSinglePerson] = useState(!currentGuest.plusOneConfirmed);
-  const [personalNote, setPersonalNote] = useState(currentGuest.personalNote || '');
-  const [partnerNote, setPartnerNote] = useState(currentGuest.partnerNote || '');
-  const [dietaryPreference, setDietaryPreference] = useState(currentGuest.dietaryPreference || 'classic');
-  const [allergies, setAllergies] = useState(currentGuest.allergies || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
   // Representative Modal
   const [isRepModalOpen, setIsRepModalOpen] = useState(false);
   const [repName, setRepName] = useState(currentGuest.representativeRequest?.name || '');
@@ -97,48 +91,6 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
 
   // Copy helper
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
-
-  // Sync state when guest changes
-  useEffect(() => {
-    setRsvpStatus(currentGuest.rsvpStatus);
-    setAttendingEvents(currentGuest.attendingEvents || {});
-    setIsSinglePerson(!currentGuest.plusOneConfirmed);
-    setPersonalNote(currentGuest.personalNote || '');
-    setPartnerNote(currentGuest.partnerNote || '');
-    setDietaryPreference(currentGuest.dietaryPreference || 'classic');
-    setAllergies(currentGuest.allergies || '');
-    setSaveSuccess(false);
-  }, [currentGuest.id]);
-
-  const handleRsvpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await submitRsvp(currentGuest.id, {
-        rsvpStatus,
-        plusOneConfirmed: !isSinglePerson,
-        attendingEvents,
-        personalNote,
-        partnerNote,
-        dietaryPreference,
-        allergies
-      });
-
-      setSaveSuccess(true);
-      if (rsvpStatus === 'confirmed') {
-        confetti({
-          particleCount: 90,
-          spread: 75,
-          origin: { y: 0.6 }
-        });
-      }
-      setTimeout(() => setSaveSuccess(false), 4000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleProposeRepSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +145,17 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
     setCopiedNumber(id);
     setTimeout(() => setCopiedNumber(null), 2500);
   };
+
+  const answered = everyoneAnswered(currentGuest);
+  const ticketReady = hasTicket(currentGuest) && !!currentGuest.qrCodeToken;
+
+  // Messages non lus : tout ce qui est arrivé depuis la dernière ouverture de la discussion (mémorisé sur cet appareil).
+  const seenKey = `chat-seen:${currentGuest.id}`;
+  const [seenAt, setSeenAt] = useState(0);
+  useEffect(() => { try { setSeenAt(Number(localStorage.getItem(seenKey)) || 0); } catch { /* stockage indisponible */ } }, [seenKey]);
+  const myName = `${currentGuest.firstName} ${currentGuest.lastName}`.trim().toLowerCase();
+  const unreadChat = messages.filter((m) => new Date(m.createdAt).getTime() > seenAt && m.senderName.trim().toLowerCase() !== myName).length;
+  const openChat = () => { setIsChatModalOpen(true); const now = Date.now(); setSeenAt(now); try { localStorage.setItem(seenKey, String(now)); } catch { /* ignoré */ } };
 
   const guestDisplayName = currentGuest.greetingTitle || `M. et Mme ${currentGuest.lastName} ${currentGuest.firstName}`;
 
@@ -265,91 +228,37 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
           </nav>
         </div>
 
-        {/* Sub-bar with guest greeting title + Annonces + Chat + VOTRE RÉPONSE and VOTRE BILLET */}
+        {/* Barre secondaire : nom de l'invité, annonces, discussion, et les deux actions — la RÉPONSE d'abord */}
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-t border-[#F0E8DE]">
-          <div className="flex items-center gap-3">
-            <div className="font-serif text-base sm:text-lg font-medium text-[#4A3B32]">
-              {guestDisplayName}
-            </div>
-
-            {/* Quick quick badges for Announcements & Chat */}
-            <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-[#E5DACD]">
-              <button
-                onClick={() => setIsAnnouncementsModalOpen(true)}
-                className="relative px-2.5 py-1 text-[11px] font-medium text-[#6B5E53] hover:text-[#2D2424] hover:bg-[#F0E8DE] rounded-full transition flex items-center gap-1 cursor-pointer"
-                title="Consulter les dernières annonces des mariés"
-              >
-                <Bell className="w-3 h-3 text-[#B26955]" />
-                <span>Annonces</span>
-                {announcements.length > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-[#B26955] text-white text-[9px] font-bold flex items-center justify-center">
-                    {announcements.length}
-                  </span>
-                )}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="font-serif text-base sm:text-lg font-medium text-[#4A3B32] truncate">{guestDisplayName}</div>
+            <div className="flex items-center gap-1 pl-2 border-l border-[#E5DACD]">
+              <button onClick={() => setIsAnnouncementsModalOpen(true)} className="relative p-2 sm:px-2.5 sm:py-1 text-[11px] font-medium text-[#6B5E53] hover:text-[#2D2424] hover:bg-[#F0E8DE] rounded-full transition flex items-center gap-1 cursor-pointer" title="Annonces des mariés" aria-label="Annonces des mariés">
+                <Bell className="w-3.5 h-3.5 text-[#B26955]" /><span className="hidden sm:inline">Annonces</span>
+                {announcements.length > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-[#B26955] text-white text-[9px] font-bold flex items-center justify-center">{announcements.length}</span>}
               </button>
-
-              <button
-                onClick={() => setIsChatModalOpen(true)}
-                className="px-2.5 py-1 text-[11px] font-medium text-[#6B5E53] hover:text-[#2D2424] hover:bg-[#F0E8DE] rounded-full transition flex items-center gap-1 cursor-pointer"
-                title="Coordonner les déplacements et covoiturages"
-              >
-                <MessageSquare className="w-3 h-3 text-[#234A38]" />
-                <span>Covoiturage</span>
-                {messages.length > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-[#234A38] text-white text-[9px] font-bold flex items-center justify-center">
-                    {messages.length}
-                  </span>
-                )}
+              <button onClick={openChat} className="relative p-2 sm:px-2.5 sm:py-1 text-[11px] font-medium text-[#6B5E53] hover:text-[#2D2424] hover:bg-[#F0E8DE] rounded-full transition flex items-center gap-1 cursor-pointer" title="Discussions : covoiturage et hébergement" aria-label="Discussions : covoiturage et hébergement">
+                <MessageSquare className="w-3.5 h-3.5 text-[#234A38]" /><span className="hidden sm:inline">Discussions</span>
+                {unreadChat > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-[#234A38] text-white text-[9px] font-bold flex items-center justify-center">{unreadChat}</span>}
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mobile announcement & chat buttons */}
-            <button
-              onClick={() => setIsAnnouncementsModalOpen(true)}
-              className="sm:hidden p-2 rounded-full border border-[#C5B3A2] text-[#4A3B32] hover:bg-[#F2ECE4] relative cursor-pointer"
-              title="Annonces"
-            >
-              <Bell className="w-3.5 h-3.5 text-[#B26955]" />
-              {announcements.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#B26955] text-white text-[8px] font-bold flex items-center justify-center">
-                  {announcements.length}
-                </span>
-              )}
+            {/* Réponse : action principale tant qu'elle n'est pas donnée */}
+            <button onClick={() => setActiveTab('rsvp')}
+              className={`px-4 py-2 rounded-full text-xs font-bold tracking-wide transition cursor-pointer uppercase flex items-center gap-1.5 ${
+                !answered ? 'bg-[#B2502F] text-white shadow-md hover:bg-[#9A4326] ring-2 ring-[#B2502F]/25' : activeTab === 'rsvp' ? 'bg-[#3A2D28] text-white' : 'bg-transparent border border-[#C5B3A2] text-[#4A3B32] hover:bg-[#F2ECE4]'}`}>
+              {!answered && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+              {answered && <Check className="w-3.5 h-3.5" />}
+              <span>{!answered ? 'Répondre' : 'Ma réponse'}</span>
             </button>
-
-            <button
-              onClick={() => setIsChatModalOpen(true)}
-              className="sm:hidden p-2 rounded-full border border-[#C5B3A2] text-[#4A3B32] hover:bg-[#F2ECE4] cursor-pointer"
-              title="Messagerie logistique"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-[#234A38]" />
-            </button>
-
-            <button
-              onClick={() => setActiveTab('rsvp')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition cursor-pointer uppercase ${
-                activeTab === 'rsvp'
-                  ? 'bg-[#3A2D28] text-white shadow-sm'
-                  : 'bg-transparent border border-[#C5B3A2] text-[#4A3B32] hover:bg-[#F2ECE4]'
-              }`}
-            >
-              Votre Réponse
-            </button>
-
-            <button
-              onClick={() => setActiveTab('billet')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition cursor-pointer uppercase flex items-center gap-1.5 ${
-                activeTab === 'billet'
-                  ? 'bg-[#234A38] text-white shadow-sm ring-2 ring-[#234A38]/30'
-                  : 'bg-[#3A2D28] text-white hover:bg-[#2D221D]'
-              }`}
-            >
-              <span>Votre Billet - QR</span>
-              {currentGuest.isCheckedIn && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              )}
+            {/* Billet : verrouillé tant qu'aucune présence n'est confirmée */}
+            <button onClick={() => setActiveTab('billet')} title={ticketReady ? 'Mon billet d’accès' : 'Disponible après votre réponse'}
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition cursor-pointer uppercase flex items-center gap-1.5 ${
+                ticketReady ? (activeTab === 'billet' ? 'bg-[#234A38] text-white ring-2 ring-[#234A38]/30' : 'bg-[#234A38] text-white hover:bg-[#1B382B]') : 'bg-transparent border border-dashed border-[#C5B3A2] text-[#A39284] hover:bg-[#F2ECE4]'}`}>
+              {ticketReady ? <span>Mon billet</span> : <><Lock className="w-3 h-3" /><span>Billet</span></>}
+              {ticketReady && currentGuest.isCheckedIn && <span className="w-2 h-2 rounded-full bg-emerald-300" />}
             </button>
           </div>
         </div>
@@ -425,26 +334,7 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
                   <h2 className="font-serif text-2xl font-bold text-[#2D2424]">
                     {guestDisplayName}
                   </h2>
-                  <p className="text-xs text-[#6B5E53] leading-relaxed">
-                    On a hâte de partager cette journée avec vous. Votre billet d'accès et votre table sont prêts.
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <button
-                      onClick={() => setActiveTab('billet')}
-                      className="flex-1 px-4 py-2.5 bg-[#234A38] hover:bg-[#1B382B] text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                    >
-                      <span>Retrouver mon billet</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('rsvp')}
-                      className="flex-1 px-4 py-2.5 bg-transparent hover:bg-slate-50 border border-[#C5B3A2] text-[#2D2424] text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>Votre réponse</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <GuestCtas guest={currentGuest} onRsvp={() => setActiveTab('rsvp')} onTicket={() => setActiveTab('billet')} onRepresentative={() => setIsRepModalOpen(true)} />
                   <p className="text-[10px] text-[#A39284] italic text-center">
                     Gardez ce lien personnel jusqu'au jour J.
                   </p>
@@ -545,20 +435,9 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
               ))}
             </div>
 
-            {/* Bottom quick navigation bar */}
-            <div className="flex gap-3 pt-6 border-t border-[#E8DFD5]">
-              <button
-                onClick={() => setActiveTab('rsvp')}
-                className="flex-1 py-3 bg-[#234A38] hover:bg-[#1B382B] text-white text-xs font-semibold rounded-xl text-center transition cursor-pointer shadow-xs"
-              >
-                Votre réponse &gt;
-              </button>
-              <button
-                onClick={() => setActiveTab('billet')}
-                className="flex-1 py-3 bg-white hover:bg-slate-50 border border-[#D5C6B5] text-[#2D2424] text-xs font-semibold rounded-xl text-center transition cursor-pointer"
-              >
-                Votre billet &gt;
-              </button>
+            {/* Action principale en bas du programme : la réponse */}
+            <div className="pt-6 border-t border-[#E8DFD5]">
+              <GuestCtas guest={currentGuest} onRsvp={() => setActiveTab('rsvp')} onTicket={() => setActiveTab('billet')} onRepresentative={() => setIsRepModalOpen(true)} />
             </div>
           </div>
         )}
@@ -1011,330 +890,11 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
         {/* ============================================================== */}
         {/* VIEW: VOTRE BILLET - QR PASS JOUR J                            */}
         {/* ============================================================== */}
-        {activeTab === 'billet' && (
-          <div className="space-y-6">
-            {/* Representative proposal alert banner as seen in screenshot */}
-            <div className="max-w-5xl mx-auto px-4 pt-4">
-              <div className="bg-[#F8EFE7] border border-[#E5D2C0] rounded-xl p-4 text-xs text-[#5C4F44] space-y-2">
-                <div className="font-bold text-[#3A2D28] flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-[#B26955]" />
-                  <span>Quelqu'un pour vous représenter ?</span>
-                </div>
-                <p className="text-[11px] text-[#7A695B] leading-relaxed">
-                  Après l'enregistrement et, si nécessaire, la validation de son absence, chaque invité peut proposer une personne pour le représenter. Les mariés devront approuver cette demande.
-                </p>
-                <button
-                  onClick={() => setIsRepModalOpen(true)}
-                  className="px-3 py-1.5 bg-[#234A38] hover:bg-[#1B382B] text-white text-xs font-semibold rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Proposer un représentant</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
+        {activeTab === 'billet' && <TicketPanel config={config} guest={currentGuest} displayName={guestDisplayName} onRsvp={() => setActiveTab('rsvp')} />}
 
-            {/* Dark green section matching screenshot exactly */}
-            <div className="bg-[#1B382B] text-white py-12 px-4 sm:px-6">
-              <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-                {/* Left instructions */}
-                <div className="md:col-span-5 space-y-4">
-                  <div className="text-emerald-300 text-[10px] uppercase font-bold tracking-widest">
-                    BILLET ACTIF · {currentGuest.rsvpStatus === 'confirmed' ? '1 OU 2 CONFIRMÉ(S)' : 'EN ATTENTE'}
-                  </div>
-                  <h2 className="font-serif text-4xl sm:text-5xl font-bold text-amber-50">
-                    Ton billet
-                  </h2>
-                  <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-                    Présentez ce QR à l'accueil. Les noms et les places ci-dessous restent synchronisés à jour en direct.
-                  </p>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      onClick={() => window.print()}
-                      className="px-3.5 py-1.5 bg-[#FAF7F2] text-[#234A38] hover:bg-white text-xs font-semibold rounded-full shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Télécharger</span>
-                    </button>
-                    <button
-                      onClick={() => window.print()}
-                      className="px-3.5 py-1.5 bg-black/30 hover:bg-black/50 text-white text-xs font-medium rounded-full transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Imprimer</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        const elem = document.getElementById('pass-card-node');
-                        elem?.requestFullscreen?.();
-                      }}
-                      className="px-3.5 py-1.5 bg-black/30 hover:bg-black/50 text-white text-xs font-medium rounded-full transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      <span>Plein écran</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Right Wedding Pass Ticket matching screenshot */}
-                <div className="md:col-span-7 flex justify-center">
-                  <div
-                    id="pass-card-node"
-                    className="w-full max-w-sm bg-white text-[#2D2424] rounded-t-3xl rounded-b-2xl shadow-2xl overflow-hidden border border-amber-900/10"
-                  >
-                    {/* Header Image of Couple */}
-                    <div className="h-36 relative overflow-hidden bg-slate-900">
-                      <img
-                        src={config.ticketImageUrl || config.heroImageUrl || undefined}
-                        alt={config.coupleNames}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 left-4 text-white">
-                        <span className="font-serif text-lg font-bold">{config.coupleNames}</span>
-                        <span className="text-[10px] text-amber-200 block">{formatEventDate(config.eventDate)}</span>
-                      </div>
-                    </div>
-
-                    {/* Ticket Content */}
-                    <div className="p-6 text-center space-y-4">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#A39284]">
-                          Pass d'Accès Invité
-                        </span>
-                        <h3 className="font-serif text-xl font-bold text-[#2D2424] mt-0.5">
-                          {guestDisplayName}
-                        </h3>
-                      </div>
-
-                      {/* QR Code Container */}
-                      <div className="p-4 bg-[#FAF7F2] rounded-2xl inline-block shadow-inner border border-[#E8DFD5]">
-                        <QrCodeDisplay value={currentGuest.qrCodeToken} size={180} />
-                        <span className="text-[10px] text-[#A39284] block mt-1.5 font-medium">
-                          QR personnel - place actualisée en direct
-                        </span>
-                      </div>
-
-                      {/* Check-in verification stamp */}
-                      {currentGuest.isCheckedIn ? (
-                        <div className="bg-emerald-100 text-emerald-800 text-xs font-bold py-1.5 px-3 rounded-full flex items-center justify-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>Émargé à l'entrée ({new Date(currentGuest.checkedInAt || '').toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})</span>
-                        </div>
-                      ) : (
-                        <div className="bg-amber-50 text-amber-900 text-[11px] font-medium py-1 px-3 rounded-full border border-amber-200">
-                          À présenter à l'accueil le jour J
-                        </div>
-                      )}
-
-                      {/* Table and Placement */}
-                      <div className="pt-3 border-t border-slate-100 grid grid-cols-2 text-left text-xs">
-                        <div>
-                          <span className="text-[10px] text-[#A39284] uppercase font-bold block">Statut Soirée</span>
-                          <span className="font-semibold text-[#234A38]">
-                            {currentGuest.rsvpStatus === 'confirmed' ? 'Soirée confirmée' : 'En attente'}
-                          </span>
-                          <span className="text-[10px] text-[#7A695B] block">Banquet de Noces</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-[#A39284] uppercase font-bold block">Placement Table</span>
-                          <span className="font-bold text-[#8A4B38]">
-                            {currentGuest.tableNumber}
-                          </span>
-                          <span className="text-[10px] text-[#7A695B] block">{config.venueCity}</span>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 text-[10px] text-[#A39284] font-serif italic border-t border-slate-100">
-                        {config.coupleNames}{config.venueCity ? ` · ${config.venueCity}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* VIEW: VOTRE RÉPONSE (RSVP)                                     */}
-        {/* ============================================================== */}
+        {/* VOTRE RÉPONSE (RSVP) : un formulaire, une réponse par personne */}
         {activeTab === 'rsvp' && (
-          <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-              {/* Left Column matching screenshot */}
-              <div className="md:col-span-4 space-y-2">
-                <span className="text-xs font-semibold text-[#8A4B38] tracking-wider uppercase">
-                  RSVP
-                </span>
-                <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#2D2424]">
-                  Votre réponse
-                </h2>
-                <p className="text-xs sm:text-sm text-[#7A695B] leading-relaxed">
-                  Dites-nous qui sera des nôtres. Vous pourrez revenir sur ce même lien si vos projets changent.
-                </p>
-              </div>
-
-              {/* Right Form Card matching screenshot */}
-              <div className="md:col-span-8 bg-white rounded-2xl p-6 sm:p-8 border border-[#E8DFD5] shadow-sm space-y-6">
-                <div className="border-b border-[#F0E8DE] pb-3">
-                  <h3 className="font-serif text-xl font-bold text-[#2D2424]">
-                    {guestDisplayName}
-                  </h3>
-                </div>
-
-                <form onSubmit={handleRsvpSubmit} className="space-y-6 text-xs sm:text-sm">
-                  {/* Checkbox: une seule personne vient */}
-                  <label className="flex items-center gap-2.5 cursor-pointer text-[#4A3B32]">
-                    <input
-                      type="checkbox"
-                      checked={isSinglePerson}
-                      onChange={(e) => setIsSinglePerson(e.target.checked)}
-                      className="w-4 h-4 text-[#234A38] rounded focus:ring-emerald-500"
-                    />
-                    <span>Une seule personne vient, ou nos programmes sont différents</span>
-                  </label>
-
-                  {/* Radio choices */}
-                  <div className="space-y-2.5">
-                    <label
-                      onClick={() => setRsvpStatus('confirmed')}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border transition cursor-pointer ${
-                        rsvpStatus === 'confirmed'
-                          ? 'bg-[#EBF3EE] border-[#8CB99E] text-[#1B382B] font-semibold'
-                          : 'border-[#E3D7C9] hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rsvpStatus"
-                        checked={rsvpStatus === 'confirmed'}
-                        onChange={() => setRsvpStatus('confirmed')}
-                        className="text-[#234A38]"
-                      />
-                      <span>Nous serons présents {isSinglePerson ? 'avec joie' : 'tous les deux'}</span>
-                    </label>
-
-                    <label
-                      onClick={() => setRsvpStatus('declined')}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border transition cursor-pointer ${
-                        rsvpStatus === 'declined'
-                          ? 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
-                          : 'border-[#E3D7C9] hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rsvpStatus"
-                        checked={rsvpStatus === 'declined'}
-                        onChange={() => setRsvpStatus('declined')}
-                        className="text-rose-600"
-                      />
-                      <span>Nous ne pourrons pas venir</span>
-                    </label>
-
-                    <label
-                      onClick={() => setRsvpStatus('pending')}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border transition cursor-pointer ${
-                        rsvpStatus === 'pending'
-                          ? 'bg-amber-50 border-amber-300 text-amber-900 font-semibold'
-                          : 'border-[#E3D7C9] hover:bg-slate-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rsvpStatus"
-                        checked={rsvpStatus === 'pending'}
-                        onChange={() => setRsvpStatus('pending')}
-                        className="text-amber-600"
-                      />
-                      <span>Pas encore répondu</span>
-                    </label>
-                  </div>
-
-                  {/* Présence par événement du programme */}
-                  {config.timelineEvents.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <div>
-                        <span className="font-semibold text-[#2D2424] block">
-                          Événements pour {isSinglePerson ? 'vous' : 'vous deux'}
-                        </span>
-                        <span className="text-xs text-[#8A7968]">
-                          Cochez les événements auxquels vous serez présent :
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        {config.timelineEvents.map((ev) => (
-                          <label key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-[#E3D7C9] hover:bg-slate-50 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={attendingEvents[ev.id] ?? true}
-                              onChange={(e) => setAttendingEvents({ ...attendingEvents, [ev.id]: e.target.checked })}
-                              className="w-4 h-4 text-[#234A38] rounded mt-0.5"
-                            />
-                            <div>
-                              <div className="font-semibold text-[#2D2424]">{ev.title}</div>
-                              <div className="text-xs text-[#7A695B]">{[ev.time, ev.locationName].filter(Boolean).join(' · ')}</div>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Notes for the newlyweds */}
-                  <div className="space-y-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#4A3B32] mb-1">
-                        M. {currentGuest.firstName} {currentGuest.lastName} - Un mot pour les mariés
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={personalNote}
-                        onChange={(e) => setPersonalNote(e.target.value)}
-                        placeholder="Votre message chaleureux..."
-                        className="w-full p-3 text-xs bg-slate-50 border border-[#D5C6B5] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#234A38]"
-                      />
-                    </div>
-
-                    {!isSinglePerson && (
-                      <div>
-                        <label className="block text-xs font-semibold text-[#4A3B32] mb-1">
-                          Mme {currentGuest.lastName} - Un mot pour les mariés
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={partnerNote}
-                          onChange={(e) => setPartnerNote(e.target.value)}
-                          placeholder="Un message de la part de l'accompagnant(e)..."
-                          className="w-full p-3 text-xs bg-slate-50 border border-[#D5C6B5] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#234A38]"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Submit Button */}
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-3.5 bg-[#234A38] hover:bg-[#1B382B] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>{isSubmitting ? 'Enregistrement en cours...' : 'Valider et Enregistrer ma réponse'}</span>
-                    </button>
-
-                    {saveSuccess && (
-                      <div className="mt-3 p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-center text-xs text-emerald-800 font-semibold flex items-center justify-center gap-2 animate-in fade-in">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Votre réponse a bien été enregistrée et synchronisée en direct avec les mariés !</span>
-                      </div>
-                    )}
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
+          <RsvpPanel guest={currentGuest} config={config} onViewTicket={() => setActiveTab('billet')} onProposeRepresentative={() => setIsRepModalOpen(true)} />
         )}
       </main>
 
@@ -1653,61 +1213,13 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
 
       {/* ============================================================== */}
       {/* MODAL: MESSAGERIE LOGISTIQUE & COVOITURAGE                     */}
-      {/* ============================================================== */}
-      {isChatModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 no-print">
-          <div className="bg-white rounded-3xl max-w-2xl w-full h-[88vh] shadow-2xl flex flex-col overflow-hidden animate-in fade-in">
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-[#FAF7F2]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#234A38] text-white flex items-center justify-center shadow-xs">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-serif text-lg sm:text-xl font-bold text-[#2D2424]">
-                    Messagerie Logistique & Covoiturage
-                  </h3>
-                  <p className="text-[11px] text-[#7A695B]">
-                    Coordonnez vos trajets, départs et arrivées avec les autres convives
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsChatModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <ChatSheet
+        open={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} messages={messages}
+        currentUserName={`${currentGuest.firstName} ${currentGuest.lastName}`.trim() || currentGuest.greetingTitle || 'Invité'}
+        currentUserRole="guest" canSeeWitnesses={/t[ée]moin/i.test(currentGuest.category || '')}
+        onSendMessage={onSendMessage || (async () => ({} as ChatMessage))}
+      />
 
-            <div className="flex-1 overflow-hidden p-3 sm:p-4 bg-slate-50">
-              <LogisticsChatView
-                messages={messages}
-                currentUserName={guestDisplayName}
-                currentUserRole="guest"
-                onSendMessage={onSendMessage || (async () => ({} as ChatMessage))}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Floating Action Button for Logistics Chat on Guest View */}
-      <aside aria-label="Aide et coordination" className="fixed bottom-20 right-5 z-40 flex flex-col items-end gap-2.5 no-print">
-        <button
-          onClick={() => setIsChatModalOpen(true)}
-          className="px-4 py-3 bg-[#234A38] hover:bg-[#1B382B] text-white rounded-full shadow-xl flex items-center gap-2 text-xs font-bold transition transform hover:scale-105 cursor-pointer ring-2 ring-white/50"
-          title="Messagerie logistique et covoiturage"
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span className="hidden sm:inline">Covoiturage & Chat</span>
-          {messages.length > 0 && (
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-[#1B382B] text-[10px] font-bold flex items-center justify-center">
-              {messages.length}
-            </span>
-          )}
-        </button>
-      </aside>
     </div>
   );
 };

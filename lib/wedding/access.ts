@@ -19,6 +19,6 @@ export async function authorizeWedding(requestedCeremonyId?: string | null): Pro
   if (!ceremonyId) return { ok: false, status: 400, error: 'Cérémonie non précisée.' };
   const ceremony = await getCeremonyById(ceremonyId);
   if (!ceremony) return { ok: false, status: 404, error: 'Cérémonie introuvable.' };
-  if (ceremony.mode === 'guestbook') return { ok: false, status: 403, error: "Cette cérémonie n'utilise pas les invitations." };
+  if (ceremony.type !== 'mariage' || ceremony.mode === 'guestbook') return { ok: false, status: 403, error: "Cette cérémonie n'utilise pas les invitations." };
   return { ok: true, ceremony, role: s.role };
 }

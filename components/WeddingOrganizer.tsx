@@ -33,7 +33,7 @@ export default function WeddingOrganizer({ ceremony, isAdmin }: { ceremony: Cere
   const guests = state?.guests ?? [];
   const checkedCount = guests.filter((g) => g.isCheckedIn).length;
   const confirmedCount = guests.filter((g) => g.rsvpStatus === 'confirmed').length;
-  const openGuestPage = (token?: string) => { if (token) window.open(`/inv/${token}#billet`, '_blank', 'noopener'); };
+  const openGuestPage = (token?: string) => { if (token) window.open(`/inv/${token}`, '_blank', 'noopener'); };
 
   if (!state) return <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-sm text-stone-500">Chargement du gestionnaire d'invitations…</div>;
   const { config, announcements, messages } = state;
@@ -43,7 +43,7 @@ export default function WeddingOrganizer({ ceremony, isAdmin }: { ceremony: Cere
       <Header
         config={config} currentSpace="organizer" onSpaceChange={() => {}} organizerTab={tab} onOrganizerTabChange={setTab}
         isWsConnected={connected} unreadAnnouncementsCount={announcements.length}
-        onOpenExportModal={() => setExportOpen(true)} onOpenSettingsModal={() => setSettingsOpen(true)} onOpenAddGuestModal={() => setAddOpen(true)}
+        onOpenExportModal={() => setExportOpen(true)} onOpenSettingsModal={() => setSettingsOpen(true)} onOpenAddGuestModal={() => { setTab('dashboard'); setAddOpen(true); }}
         checkedInRatio={{ checked: checkedCount, totalConfirmed: confirmedCount }}
       />
       <div className="p-3 sm:p-6">
@@ -53,7 +53,7 @@ export default function WeddingOrganizer({ ceremony, isAdmin }: { ceremony: Cere
         {tab === 'customizer' && <WeddingCustomizer config={config} onConfigSaved={(c) => setState({ ...state, config: c })} />}
         {tab === 'checkin' && <CheckInScanner guests={guests} onGuestSelectedForView={(g) => openGuestPage(g.inviteToken)} />}
         {tab === 'announcements' && <AnnouncementsView announcements={announcements} />}
-        {tab === 'chat' && <LogisticsChatView messages={messages} guests={guests} activeGuest={guests[0]} />}
+        {tab === 'chat' && <LogisticsChatView messages={messages} guests={guests} currentUserRole="organizer" currentUserName="Organisateur" layout="page" />}
       </div>
       <ExportModal isOpen={exportOpen} onClose={() => setExportOpen(false)} guests={guests} config={config} />
       <WeddingSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} config={config} />

@@ -115,6 +115,12 @@ export default function GuestSignView({ invite, settings }: { invite: PublicInvi
 
         {invite.customIntro && <p className="text-sm text-stone-700 text-center max-w-xl mx-auto leading-relaxed">{invite.customIntro}</p>}
 
+        {invite.hasProgramme && (
+          <div className="text-center">
+            <a href={`/p/${invite.slug}`} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-violet-50 bg-[#2A1450] hover:bg-[#3a1c6e] shadow-md transition-colors">Voir le programme des obsèques, les convois et le soutien à la famille →</a>
+          </div>
+        )}
+
         <div className="rounded-2xl border shadow-lg p-5 sm:p-8" style={{ background: paper.bg, borderColor: paper.border, color: paper.text }}>
           {invite.isClosed ? (
             <p className={`text-center ${font} text-lg`}>Ce livre d'or est clos : il n'accepte plus de nouveaux messages. Merci à toutes et à tous.</p>

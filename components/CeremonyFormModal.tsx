@@ -25,12 +25,12 @@ export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props
   const set = <K extends keyof CeremonyFormValues>(k: K, val: CeremonyFormValues[K]) => setV((p) => ({ ...p, [k]: val }));
   const setTheme = <K extends keyof ThemeConfig>(k: K, val: ThemeConfig[K]) => setV((p) => ({ ...p, theme: { ...p.theme, [k]: val } }));
 
-  // La formule (livre d'or / invitation / les deux) n'existe que pour le mariage ; les autres types gardent le livre d'or.
-  const pickType = (type: CeremonyType) => setV((p) => ({ ...p, type, mode: type === 'mariage' ? (p.type === 'mariage' ? p.mode : 'both') : 'guestbook', theme: { ...THEME_PRESETS[type], footerText: p.theme.footerText, coverImage: p.theme.coverImage } }));
+  // La formule (livre d'or / invitation ou programme / les deux) n'existe que pour le mariage et le deuil ; les autres types gardent le livre d'or.
+  const pickType = (type: CeremonyType) => setV((p) => ({ ...p, type, mode: type === 'mariage' || type === 'deuil' ? (p.type === type ? p.mode : 'both') : 'guestbook', theme: { ...THEME_PRESETS[type], footerText: p.theme.footerText, coverImage: p.theme.coverImage } }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setBusy(true);
-    try { await onSubmit({ ...v, mode: v.type === 'mariage' ? v.mode : 'guestbook' }, editing ? undefined : groupName.trim() || undefined); onClose(); }
+    try { await onSubmit({ ...v, mode: v.type === 'mariage' || v.type === 'deuil' ? v.mode : 'guestbook' }, editing ? undefined : groupName.trim() || undefined); onClose(); }
     catch (err) { setError(err instanceof Error ? err.message : 'Enregistrement impossible.'); }
     finally { setBusy(false); }
   };
@@ -49,15 +49,19 @@ export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props
           ))}
         </div>
 
-        {v.type === 'mariage' && (
+        {(v.type === 'mariage' || v.type === 'deuil') && (
           <div className="space-y-2">
-            <span className="block text-xs font-semibold uppercase text-stone-700">Formule du mariage</span>
+            <span className="block text-xs font-semibold uppercase text-stone-700">{v.type === 'deuil' ? 'Formule du deuil' : 'Formule du mariage'}</span>
             <div className="grid sm:grid-cols-3 gap-2">
-              {([
+              {((v.type === 'deuil' ? [
+                { m: 'guestbook', label: "Livre d'or", d: 'Messages et photos des proches, livre PDF.' },
+                { m: 'invitation', label: 'Programme', d: 'Page publique : programme, faire-part, convois en bus, dons.' },
+                { m: 'both', label: 'Les deux', d: "Livre d'or et programme, gérés par le même responsable." },
+              ] : [
                 { m: 'guestbook', label: "Livre d'or", d: 'Messages et photos des invités, livre PDF.' },
                 { m: 'invitation', label: 'Invitation', d: 'Lien personnel par invité, réponses, billet QR, émargement.' },
                 { m: 'both', label: 'Les deux', d: "Invitations et livre d'or dans le même espace." },
-              ] as { m: CeremonyMode; label: string; d: string }[]).map((o) => (
+              ]) as { m: CeremonyMode; label: string; d: string }[]).map((o) => (
                 <button type="button" key={o.m} onClick={() => set('mode', o.m)}
                   className={`text-left p-3 rounded-xl border text-xs transition-all ${v.mode === o.m ? 'border-amber-600 bg-amber-50 shadow-sm' : 'border-stone-300 bg-white hover:border-stone-400'}`}>
                   <span className="font-semibold block text-stone-900">{o.label}</span><span className="text-stone-500">{o.d}</span>
@@ -92,7 +96,7 @@ export default function CeremonyFormModal({ ceremony, onClose, onSubmit }: Props
         </div>
 
         {!editing && (
-          <Field label={v.type === 'mariage' ? 'Dossier du mariage (accès du responsable)' : 'Premier groupe (facultatif)'} hint={v.type === 'mariage' ? "Un seul responsable par mariage : son code d'accès est généré à la création et affiché une seule fois." : "Ex : Famille proche, Collègues, Amis d'enfance… Vous pourrez en ajouter d'autres ensuite."}>
+          <Field label={v.type === 'mariage' || v.type === 'deuil' ? (v.type === 'deuil' ? 'Dossier du deuil (accès du responsable)' : 'Dossier du mariage (accès du responsable)') : 'Premier groupe (facultatif)'} hint={v.type === 'mariage' || v.type === 'deuil' ? "Un seul responsable par cérémonie : son code d'accès est généré à la création et affiché une seule fois." : "Ex : Famille proche, Collègues, Amis d'enfance… Vous pourrez en ajouter d'autres ensuite."}>
             <input className={inputCls} value={groupName} onChange={(e) => setGroupName(e.target.value)} />
           </Field>
         )}

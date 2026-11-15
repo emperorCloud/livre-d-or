@@ -1,8 +1,8 @@
 import type { GuestPhoto } from '@/lib/types';
 import { processPhoto, processFeatured, type FeaturedRatio } from './images';
 
-type Kind = 'photo' | 'thumb' | 'featured';
-const FOLDER: Record<Kind, string> = { photo: 'photos', thumb: 'thumbs', featured: 'featured' };
+type Kind = 'photo' | 'thumb' | 'featured' | 'proof';
+const FOLDER: Record<Kind, string> = { photo: 'photos', thumb: 'thumbs', featured: 'featured', proof: 'proofs' };
 
 let configPromise: Promise<{ driver: 'blob' | 'r2'; maxPhotosPerEntry: number }> | null = null;
 export function getUploadConfig() {
@@ -61,4 +61,11 @@ export async function uploadFeaturedPhoto(file: File, ratio: FeaturedRatio) {
 export async function uploadConfigImage(file: File): Promise<string> {
   const p = await processPhoto(file);
   return uploadJpeg(p.full, 'featured'); // réservé aux sessions responsable / admin côté serveur
+}
+
+/** Preuve de paiement d'un convoi (capture d'écran ou photo du reçu) : réduite en JPEG dans le navigateur. Les PDF ne sont pas acceptés. */
+export async function uploadProofImage(file: File, inviteSlug: string): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Envoyez une capture ou une photo (JPEG, PNG…). Les PDF ne sont pas acceptés.');
+  const p = await processPhoto(file);
+  return uploadJpeg(p.full, 'proof', { inviteSlug });
 }

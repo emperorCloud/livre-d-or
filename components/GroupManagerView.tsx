@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import WeddingOrganizer from './WeddingOrganizer';
+import ProgrammeOrganizer from './funeral/ProgrammeOrganizer';
+import { useToasts } from './Toasts';
 import { ArrowLeft, BookOpen, Check, Copy, ExternalLink, Pin, QrCode, Trash2, Eye, EyeOff } from 'lucide-react';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry, type ThemeConfig } from '@/lib/types';
 import { FONTS, PAPERS } from '@/lib/client/themeStyles';
@@ -20,7 +22,7 @@ interface Props {
 export default function GroupManagerView({ ceremony, group, entries, onBack, onSave, onModerate, onDeleteEntry, onQr, onPdf }: Props) {
   const [draft, setDraft] = useState<Group>(group);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { push: toast, node: toasts } = useToasts();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   // Formule du mariage : livre d'or, invitations, ou les deux (onglets)
@@ -29,7 +31,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
   const [tab, setTab] = useState<'book' | 'inv'>(hasBook ? 'book' : 'inv');
   const showBook = hasBook && tab === 'book';
   useEffect(() => setDraft(group), [group]);
-  const patch = (p: Partial<Group>) => { setSaved(false); setDraft((d) => ({ ...d, ...p })); };
+  const patch = (p: Partial<Group>) => setDraft((d) => ({ ...d, ...p }));
   const overrides = (draft.themeOverrides || {}) as Partial<ThemeConfig>;
   const setOverride = (k: 'fontStyle' | 'paperTexture', v: string) => patch({ themeOverrides: { ...overrides, [k]: v } as Partial<ThemeConfig> });
   const url = typeof window === 'undefined' ? '' : inviteUrl(group.inviteSlug);
@@ -46,15 +48,15 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         featuredFocalX: draft.featuredFocalX, featuredFocalY: draft.featuredFocalY, featuredWidth: draft.featuredWidth, featuredHeight: draft.featuredHeight,
         themeOverrides: draft.themeOverrides,
       } as Partial<Group>);
-      setSaved(true);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Enregistrement impossible.'); } finally { setBusy(false); }
+      toast('Modifications enregistrées');
+    } catch (e) { const m = e instanceof Error ? e.message : 'Enregistrement impossible.'; setError(m); toast(m, 'error'); } finally { setBusy(false); }
   };
 
   const section = 'bg-white border border-stone-200 rounded-2xl shadow-xs p-5 space-y-4';
   const title = 'font-serif-cinzel font-semibold text-base text-stone-900';
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <main className={`${hasInv && tab === 'inv' ? 'max-w-7xl' : 'max-w-5xl'} mx-auto px-4 sm:px-6 py-8 space-y-6`}>
       <div className="space-y-2">
         {onBack && <button onClick={onBack} className="text-xs text-stone-600 hover:text-stone-900 flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" />Retour à l'administration</button>}
         <span className="text-[11px] uppercase tracking-[0.25em] font-serif-cinzel font-semibold text-amber-900">{ceremony.title}</span>
@@ -64,7 +66,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
 
       {hasBook && hasInv && (
         <div className="flex gap-2 border-b border-stone-200">
-          {([['book', "Livre d'or"], ['inv', 'Invitations']] as const).map(([id, label]) => (
+          {([['book', "Livre d'or"], ['inv', ceremony.type === 'deuil' ? 'Programme' : 'Invitations']] as const).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 -mb-px transition-colors ${tab === id ? 'border-amber-600 text-stone-900' : 'border-transparent text-stone-500 hover:text-stone-800'}`}>{label}</button>
           ))}
         </div>
@@ -94,12 +96,14 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
       </section>
       )}
 
+      {showBook && (
       <section className={section}>
         <h2 className={title}>Photo du concerné à la une</h2>
         <FeaturedPhotoEditor group={draft} onChange={patch} />
       </section>
+      )}
 
-      {hasInv && tab === 'inv' && <WeddingOrganizer ceremony={ceremony} isAdmin={!!onBack} />}
+      {hasInv && tab === 'inv' && (ceremony.type === 'deuil' ? <ProgrammeOrganizer ceremony={ceremony} group={group} /> : <WeddingOrganizer ceremony={ceremony} isAdmin={!!onBack} />)}
 
       {showBook && (
       <section className={section}>
@@ -115,11 +119,12 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
       </section>
       )}
 
-      <div className="flex items-center gap-3 sticky bottom-4">
-        <button onClick={save} disabled={busy} className={`${btnPrimary} shadow-lg`}>{busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
-        {saved && <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">Modifications enregistrées</span>}
-        {error && <span className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</span>}
-      </div>
+      {(showBook || onBack) && (
+        <div className="flex items-center gap-3 sticky bottom-4 z-10">
+          <button onClick={save} disabled={busy} className={`${btnPrimary} shadow-lg`}>{busy ? 'Enregistrement…' : 'Enregistrer les modifications'}</button>
+          {error && <span role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{error}</span>}
+        </div>
+      )}
 
       {showBook && (
       <section className={section}>
@@ -148,6 +153,7 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
         </ul>
       </section>
       )}
+      {toasts}
     </main>
   );
 }

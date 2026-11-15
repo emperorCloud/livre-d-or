@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage, getGuestByToken } from '@/lib/wedding/db';
+import { addMessage, getGuestByToken, isWitness } from '@/lib/wedding/db';
 import { TOKEN_RE } from '@/lib/wedding/format';
 import { cleanMessage } from '@/lib/wedding/validate';
 import { guestWriteLimit } from '@/lib/wedding/limits';
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (!row) return NextResponse.json({ error: 'Invitation introuvable.' }, { status: 404 });
   const v = cleanMessage(await req.json().catch(() => null));
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+  if (v.value.channelId === 'temoins' && !isWitness(row.category)) return NextResponse.json({ error: 'Ce salon est réservé aux témoins.' }, { status: 403 });
   const name = `${row.first_name} ${row.last_name}`.trim() || row.greeting_title || 'Invité';
-  const role = /t[ée]moin/i.test(row.category) ? 'Temoin' : 'Invite';
+  const role = isWitness(row.category) ? 'Temoin' : 'Invite';
   return NextResponse.json(await addMessage(row.ceremony_id, v.value, { name, role }), { status: 201 });
 }

@@ -100,3 +100,62 @@ billet QR, annonces, discussions, musique.
 ## À vérifier chez vous
 `npm install`, `npm run lint`, `npm run test:logic`. Puis : créer un mariage « Les deux » → code du responsable → onglet *Invitations* → *Personnalisation* (couple, programme)
 → ajouter un invité → ouvrir son lien → répondre → voir le billet → *Émargement* : saisir le code du billet.
+
+---
+
+# Deuil — formule « Programme » (migration 007)
+
+Un deuil peut désormais avoir la même formule qu'un mariage : **Livre d'or**, **Programme** ou **Les deux**.
+Le **même responsable** (même code d'accès) gère le livre d'or et le programme, dans deux onglets.
+
+## Avant de déployer
+1. **Neon → SQL Editor** : exécuter `lib/migrations/007_deuil_programme.sql` (additif, rejouable). Aucune nouvelle variable d'environnement.
+2. Pousser le code et déployer. Les deuils existants restent en « Livre d'or » : rien ne change pour eux.
+3. Administration → modifier un deuil → choisir la formule « Programme » ou « Les deux ».
+
+## Ce que le public voit : `/p/<lien du groupe>`
+Fond violet profond. Onglets : **Programme** (par jour, itinéraire, ajout à l'agenda, livret imprimable), **Faire-part**,
+**Convois** (places restantes, réservation avec preuve de paiement en image), **Soutien** (moyens de paiement, déclaration de don).
+Avec la formule « Les deux », la page livre d'or (`/i/<lien>`) affiche un bouton vers le programme.
+
+## Sécurité
+| Sujet | Règle |
+|---|---|
+| Gestion | Responsable : uniquement son deuil. Admin : tout. Jamais pour un mariage (`/api/wedding/*` refuse désormais un deuil). |
+| Réservations | Capacité vérifiée dans la requête SQL + `UNIQUE (bus_id, order_number)` : pas de sur-réservation, même à deux. |
+| Dons | Un don déclaré par un visiteur est « en attente » : il n'entre dans le total public qu'après confirmation du responsable. |
+| Données publiques | Jamais le nom d'un passager, le téléphone du chauffeur, ni le téléphone/montant d'un donateur. |
+| Preuves de paiement | JPEG uniquement (réduit dans le navigateur), dossier `proofs/`, URL non devinable. Les PDF ne sont pas acceptés. |
+
+## SEO
+- Titre, description, URL canonique, aperçu WhatsApp/Facebook (photo du défunt, sinon carte violette `opengraph-image`), données structurées schema.org (Person + Event).
+- `sitemap.xml` inclut les programmes dont la famille a laissé cochée « Référencement Google » (onglet Identité). Décochée : `noindex` + absent du sitemap.
+- Les livres d'or (`/i/…`) et invitations de mariage (`/inv/…`) restent `noindex`.
+
+## Routes ajoutées
+| Route | Accès |
+|---|---|
+| `GET /api/funeral/state`, `PUT /api/funeral/config` | responsable / admin |
+| `POST /api/funeral/buses`, `DELETE /api/funeral/buses/[id]` | responsable / admin |
+| `PATCH/DELETE /api/funeral/reservations/[id]` | responsable / admin |
+| `POST /api/funeral/donations`, `PATCH/DELETE /api/funeral/donations/[id]` | responsable / admin |
+| `GET /api/programme/[slug]` | public (données non sensibles) |
+| `POST /api/programme/[slug]/reserve`, `POST /api/programme/[slug]/donate` | public, limité par IP et par lien |
+
+---
+
+# Mariage — réponse par personne, billet sous condition, discussions, gestion des invités (migration 008)
+
+## Avant de déployer
+1. **Neon → SQL Editor** : exécuter `lib/migrations/008_rsvp_couple.sql` (additif, rejouable). À passer **après** la 006 (et la 007 si vous déployez aussi le deuil).
+   Elle ajoute `guest_rsvp` et `partner_rsvp` et reprend les réponses déjà données : un invité couple qui avait confirmé « une seule personne » devient « conjoint absent », un couple confirmé « tous les deux » devient « les deux présents ».
+2. Déployer. Aucune variable d'environnement nouvelle.
+
+## Règles
+| Sujet | Règle |
+|---|---|
+| Invitation couple (`plusOneAllowed`) | Chaque personne répond (présent / absent) dans le même formulaire ; envoi impossible tant qu'une réponse manque. |
+| Réponse de l'invitation (`rsvp_status`) | Calculée : confirmée si au moins une personne vient, déclinée si toutes déclinent, sinon en attente. Stats, émargement et exports n'ont pas changé de logique. |
+| Billet | Réservé à ceux qui ont confirmé : le serveur n'envoie **pas** le code QR tant qu'aucune personne ne vient. |
+| Lien d'invitation | Ouvre la page d'invitation, plus directement le billet (liens copiés, WhatsApp, export CSV). |
+| Salon « Témoins & surprises » | Invisible et inaccessible (lecture et écriture) pour les invités qui ne sont pas de catégorie « Témoins ». |

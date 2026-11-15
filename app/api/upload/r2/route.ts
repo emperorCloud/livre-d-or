@@ -4,7 +4,7 @@ import { authorizeUpload, type UploadKind } from '@/lib/uploadAuth';
 import { activeDriver, UPLOAD_CONTENT_TYPE } from '@/lib/storage';
 import { presignPut } from '@/lib/storage/r2';
 
-const FOLDER: Record<UploadKind, string> = { photo: 'photos', thumb: 'thumbs', featured: 'featured' };
+const FOLDER: Record<UploadKind, string> = { photo: 'photos', thumb: 'thumbs', featured: 'featured', proof: 'proofs' };
 
 // Renvoie une URL signée : le navigateur envoie la photo directement à R2.
 export async function POST(req: NextRequest) {

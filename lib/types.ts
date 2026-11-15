@@ -102,7 +102,7 @@ export interface ThemeConfig {
   borderStyle: 'classic' | 'minimal' | 'ornate' | 'modern';
 }
 
-/** Mariage : livre d'or, invitations, ou les deux. Les autres types sont toujours « guestbook ». */
+/** Mariage et deuil : livre d'or, invitations/programme, ou les deux (« invitation » = programme seul pour un deuil). Les autres types sont toujours « guestbook ». */
 export type CeremonyMode = 'guestbook' | 'invitation' | 'both';
 
 export interface Ceremony {
@@ -152,6 +152,7 @@ export interface PublicInvite {
   featuredPhotoAspectRatio: '16:9' | '4:5' | '1:1';
   featuredFocalX: number;
   featuredFocalY: number;
+  hasProgramme: boolean; // deuil en formule « les deux » : lien vers /p/<slug>
   ceremony: Pick<Ceremony, 'type' | 'title' | 'subtitle' | 'honoreeName' | 'date' | 'location'>;
   theme: ThemeConfig;
 }

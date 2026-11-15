@@ -1,7 +1,14 @@
 import type { MetadataRoute } from 'next';
 import { siteUrl } from '@/lib/seo';
+import { listIndexableProgrammes } from '@/lib/funeral/db';
 
-// Seule la page publique d'accueil est référencée : les livres d'or (liens privés) ne doivent jamais l'être.
-export default function sitemap(): MetadataRoute.Sitemap {
-  return [{ url: siteUrl(), lastModified: new Date(), changeFrequency: 'monthly', priority: 1 }];
+export const dynamic = 'force-dynamic';
+
+// Accueil + pages de PROGRAMME de deuil dont la famille a autorisé le référencement.
+// Les livres d'or (liens privés, /i/…) et les invitations de mariage (/inv/…) ne sont jamais listés.
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = siteUrl();
+  const home: MetadataRoute.Sitemap = [{ url: base, lastModified: new Date(), changeFrequency: 'monthly', priority: 1 }];
+  const pages = await listIndexableProgrammes().catch(() => []);
+  return [...home, ...pages.map((p) => ({ url: `${base}/p/${p.slug}`, lastModified: new Date(p.updatedAt), changeFrequency: 'weekly' as const, priority: 0.6 }))];
 }

@@ -15,6 +15,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import type { Guest } from '@/lib/wedding/types';
+import { confirmedPersons } from '@/lib/wedding/rsvp';
 import { checkInGuest, undoCheckIn, CheckInResult } from '@/lib/wedding/api';
 import { playSuccessSound, playWarningSound, playErrorSound } from '@/lib/wedding/soundUtils';
 
@@ -363,10 +364,10 @@ export const CheckInScanner: React.FC<CheckInScannerProps> = ({ guests, onGuestS
                           <span className="font-semibold text-amber-900">{guest.tableNumber}</span>
                           <span aria-hidden="true">·</span>
                           <span>{guest.qrCodeToken}</span>
-                          {guest.plusOneConfirmed && (
+                          {guest.plusOneAllowed && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span>+1 ({guest.plusOneName || 'Accompagnant'})</span>
+                              <span>{confirmedPersons(guest)} pers. attendue{confirmedPersons(guest) > 1 ? 's' : ''}</span>
                             </>
                           )}
                         </div>
@@ -440,11 +441,10 @@ export const CheckInScanner: React.FC<CheckInScannerProps> = ({ guests, onGuestS
                     </span>
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-100">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Accompagnant (+1)</span>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Personnes attendues</span>
                     <span className="font-medium text-slate-800">
-                      {lastResult.guest.plusOneConfirmed
-                        ? `Oui : ${lastResult.guest.plusOneName || 'Non spécifié'}`
-                        : 'Aucun'}
+                      {confirmedPersons(lastResult.guest)}
+                      {lastResult.guest.plusOneAllowed && lastResult.guest.partnerRsvp === 'confirmed' && ` (avec ${lastResult.guest.plusOneName || 'le conjoint'})`}
                     </span>
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-100">

@@ -6,7 +6,7 @@ export type StorageDriver = 'blob' | 'r2';
 export const MAX_PHOTOS_PER_ENTRY = 6;
 export const UPLOAD_MAX_BYTES = 2_500_000; // image déjà redimensionnée par le navigateur (~0,3–1 Mo)
 export const UPLOAD_CONTENT_TYPE = 'image/jpeg';
-export const UPLOAD_PATH = /^(photos|thumbs|featured)\/[A-Za-z0-9_-]{8,64}\.jpg$/;
+export const UPLOAD_PATH = /^(photos|thumbs|featured|proofs)\/[A-Za-z0-9_-]{8,64}\.jpg$/;
 
 export function activeDriver(): StorageDriver {
   return process.env.STORAGE_DRIVER === 'r2' ? 'r2' : 'blob';

@@ -7,6 +7,7 @@ import { generateAccessCode } from './auth';
 const TYPES: CeremonyType[] = ['deuil', 'mariage', 'anniversaire', 'retraite'];
 const RATIOS = ['16:9', '4:5', '1:1'] as const;
 const MODES: CeremonyMode[] = ['guestbook', 'invitation', 'both'];
+const HAS_FORMULA: CeremonyType[] = ['mariage', 'deuil'];
 const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 
 function rowToCeremony(r: any): Ceremony {
@@ -48,7 +49,7 @@ export async function createCeremony(d: any): Promise<Ceremony | null> {
   if (!type || !title || !honoree) return null;
   const id = 'ceremony-' + randomUUID();
   const theme = buildTheme(type, d.theme || {});
-  const mode: CeremonyMode = type === 'mariage' && MODES.includes(d.mode) ? d.mode : 'guestbook'; // la formule n'existe que pour le mariage
+  const mode: CeremonyMode = HAS_FORMULA.includes(type) && MODES.includes(d.mode) ? d.mode : 'guestbook'; // la formule n'existe que pour le mariage et le deuil
   await sql`
     INSERT INTO ceremonies (id, type, mode, title, subtitle, honoree_name, event_date, location, theme)
     VALUES (${id}, ${type}, ${mode}, ${title}, ${clip(d.subtitle, 200)}, ${honoree}, ${clip(d.date, 80)},
@@ -64,7 +65,7 @@ export async function updateCeremony(id: string, d: any): Promise<Ceremony | nul
   const cur = rowToCeremony(rows[0]);
   const type = TYPES.includes(d?.type) ? (d.type as CeremonyType) : cur.type;
   const theme = buildTheme(type, { ...cur.theme, ...(d?.theme || {}) });
-  const mode: CeremonyMode = type === 'mariage' ? (MODES.includes(d?.mode) ? d.mode : cur.mode) : 'guestbook';
+  const mode: CeremonyMode = HAS_FORMULA.includes(type) ? (MODES.includes(d?.mode) ? d.mode : cur.mode) : 'guestbook';
   await sql`
     UPDATE ceremonies SET type = ${type}, mode = ${mode},
       title = ${clip(d.title, 160) || cur.title},
@@ -180,13 +181,14 @@ export async function getPublicInvite(slug: string): Promise<PublicInvite | null
     FROM groups g JOIN ceremonies c ON c.id = g.ceremony_id WHERE g.invite_slug = ${slug}
   `;
   const r = rows[0];
-  if (!r || r.c_mode === 'invitation') return null; // mariage « invitation seule » : pas de livre d'or
+  if (!r || r.c_mode === 'invitation') return null; // mariage « invitation seule » / deuil « programme seul » : pas de livre d'or
   const theme: ThemeConfig = buildTheme(r.c_type, { ...(r.c_theme || {}), ...(r.theme_overrides || {}) });
   return {
     slug: r.invite_slug, groupName: r.name, customIntro: r.custom_intro, customPrompt: r.custom_prompt,
     allowPhotos: r.allow_photos, isClosed: r.is_closed,
     featuredPhotoUrl: r.featured_photo_url || theme.coverImage, featuredPhotoAspectRatio: r.featured_photo_aspect_ratio,
     featuredFocalX: r.featured_focal_x ?? 0.5, featuredFocalY: r.featured_focal_y ?? 0.4,
+    hasProgramme: r.c_type === 'deuil' && r.c_mode === 'both',
     ceremony: { type: r.c_type, title: r.c_title, subtitle: r.c_subtitle, honoreeName: r.c_honoree, date: r.c_date, location: r.c_location },
     theme,
   };

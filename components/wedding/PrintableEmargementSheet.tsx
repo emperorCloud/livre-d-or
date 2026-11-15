@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import type { Guest, WeddingConfig } from '@/lib/wedding/types';
+import { confirmedPersons } from '@/lib/wedding/rsvp';
 
 interface PrintableEmargementSheetProps {
   guests: Guest[];
@@ -17,7 +18,7 @@ export const PrintableEmargementSheet: React.FC<PrintableEmargementSheetProps> =
   const confirmedCount = sortedGuests.filter((g) => g.rsvpStatus === 'confirmed').length;
   const totalWithExtra = sortedGuests.reduce((acc, g) => {
     if (g.rsvpStatus === 'confirmed') {
-      return acc + 1 + (g.plusOneConfirmed ? 1 : 0) + g.childrenCount;
+      return acc + confirmedPersons(g) + g.childrenCount;
     }
     return acc;
   }, 0);
@@ -85,8 +86,8 @@ export const PrintableEmargementSheet: React.FC<PrintableEmargementSheetProps> =
                   {guest.rsvpStatus === 'confirmed' ? 'OUI' : guest.rsvpStatus === 'declined' ? 'NON' : 'ATTENTE'}
                 </td>
                 <td className="p-1.5 border border-gray-300 text-[11px]">
-                  {guest.plusOneConfirmed
-                    ? `+1 (${guest.plusOneName || 'Nom non précisé'})`
+                  {guest.plusOneAllowed
+                    ? (confirmedPersons(guest) === 2 ? `2 pers. (avec ${guest.plusOneName || 'le conjoint'})` : `${confirmedPersons(guest)} pers.`)
                     : 'Seul'}
                   {guest.childrenCount > 0 && ` · ${guest.childrenCount} enf.`}
                 </td>

@@ -6,7 +6,9 @@ import type { Announcement, ChatMessage, Guest, PhysicalGiftItem, WeddingConfig,
 import { defaultWeddingConfig } from './defaults';
 import { newGuestToken, newTicketCode } from './tokens';
 import { cleanConfig, type GuestFields, type Representative } from './validate';
+import { aggregateRsvp, confirmedPersons } from './rsvp';
 
+export const isWitness = (category: string) => /t[ée]moin/i.test(category || '');
 const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : undefined);
 
 // ---------- Invités ----------
@@ -14,6 +16,7 @@ function rowToGuest(r: any, forManager: boolean): Guest {
   const g: Guest = {
     id: r.id, qrCodeToken: r.ticket_code, greetingTitle: r.greeting_title, firstName: r.first_name, lastName: r.last_name,
     email: r.email, phone: r.phone, tableNumber: r.table_number, category: r.category, rsvpStatus: r.rsvp_status,
+    guestRsvp: r.guest_rsvp, partnerRsvp: r.partner_rsvp,
     plusOneAllowed: r.plus_one_allowed, plusOneConfirmed: r.plus_one_confirmed, plusOneName: r.plus_one_name, childrenCount: r.children_count,
     dietaryPreference: r.dietary_preference, allergies: r.allergies, personalNote: r.personal_note, partnerNote: r.partner_note,
     attendingEvents: r.attending_events || {}, representativeRequest: r.representative || undefined,
@@ -21,6 +24,8 @@ function rowToGuest(r: any, forManager: boolean): Guest {
     lastUpdated: iso(r.updated_at)!,
   };
   if (forManager) { g.inviteToken = r.invite_token; g.notes = r.notes; } // jeton du lien et notes privées : jamais côté invité
+  // Le billet (QR) n'est remis qu'à celui qui a confirmé : tant qu'aucune personne ne vient, le code n'est jamais envoyé à l'invité.
+  else if (confirmedPersons(g) === 0) g.qrCodeToken = '';
   return g;
 }
 
@@ -42,9 +47,9 @@ export async function createGuest(ceremonyId: string, f: Partial<GuestFields>): 
     try {
       const { rows } = await sql`
         INSERT INTO wedding_guests (id, ceremony_id, invite_token, ticket_code, greeting_title, first_name, last_name, email, phone, table_number, category,
-          plus_one_allowed, children_count, dietary_preference, allergies, notes)
+          plus_one_allowed, plus_one_name, children_count, dietary_preference, allergies, notes)
         VALUES (${'guest-' + randomUUID()}, ${ceremonyId}, ${newGuestToken()}, ${newTicketCode()}, ${f.greetingTitle ?? ''}, ${f.firstName ?? ''}, ${f.lastName ?? ''},
-          ${f.email ?? ''}, ${f.phone ?? ''}, ${f.tableNumber ?? ''}, ${f.category ?? ''}, ${f.plusOneAllowed ?? false}, ${f.childrenCount ?? 0},
+          ${f.email ?? ''}, ${f.phone ?? ''}, ${f.tableNumber ?? ''}, ${f.category ?? ''}, ${f.plusOneAllowed ?? false}, ${f.plusOneName ?? ''}, ${f.childrenCount ?? 0},
           ${f.dietaryPreference ?? 'classic'}, ${f.allergies ?? ''}, ${f.notes ?? ''})
         RETURNING *`;
       return rowToGuest(rows[0], true);
@@ -58,12 +63,17 @@ export async function updateGuest(id: string, ceremonyId: string, p: Partial<Gue
   const cur = await getGuestRow(id, ceremonyId);
   if (!cur) return null;
   const rep = 'representative' in p ? p.representative : cur.representative;
+  // Réponses par personne (le responsable peut les corriger) ; la réponse de l'invitation est toujours recalculée.
+  const couple = p.plusOneAllowed ?? cur.plus_one_allowed;
+  const guestRsvp = p.guestRsvp ?? cur.guest_rsvp;
+  const partnerRsvp = couple ? (p.partnerRsvp ?? cur.partner_rsvp) : 'pending';
+  const agg = aggregateRsvp(guestRsvp, partnerRsvp, couple);
   const { rows } = await sql`
     UPDATE wedding_guests SET
       greeting_title = ${p.greetingTitle ?? cur.greeting_title}, first_name = ${p.firstName ?? cur.first_name}, last_name = ${p.lastName ?? cur.last_name},
       email = ${p.email ?? cur.email}, phone = ${p.phone ?? cur.phone}, table_number = ${p.tableNumber ?? cur.table_number}, category = ${p.category ?? cur.category},
-      rsvp_status = ${p.rsvpStatus ?? cur.rsvp_status}, plus_one_allowed = ${p.plusOneAllowed ?? cur.plus_one_allowed},
-      plus_one_confirmed = ${p.plusOneConfirmed ?? cur.plus_one_confirmed}, plus_one_name = ${p.plusOneName ?? cur.plus_one_name},
+      rsvp_status = ${agg}, guest_rsvp = ${guestRsvp}, partner_rsvp = ${partnerRsvp}, plus_one_allowed = ${couple},
+      plus_one_confirmed = ${couple && partnerRsvp === 'confirmed'}, plus_one_name = ${p.plusOneName ?? cur.plus_one_name},
       children_count = ${p.childrenCount ?? cur.children_count}, dietary_preference = ${p.dietaryPreference ?? cur.dietary_preference},
       allergies = ${p.allergies ?? cur.allergies}, personal_note = ${p.personalNote ?? cur.personal_note}, partner_note = ${p.partnerNote ?? cur.partner_note},
       notes = ${p.notes ?? cur.notes}, attending_events = ${JSON.stringify(p.attendingEvents ?? cur.attending_events ?? {})}::jsonb,
@@ -80,7 +90,8 @@ export async function deleteGuest(id: string, ceremonyId: string): Promise<boole
 /** Réponse de l'invité : seules les colonnes de réponse sont modifiées (jamais table, catégorie, droits, émargement). */
 export async function applyGuestRsvp(token: string, f: Partial<GuestFields>): Promise<boolean> {
   const { rowCount } = await sql`
-    UPDATE wedding_guests SET rsvp_status = ${f.rsvpStatus!}, plus_one_confirmed = ${f.plusOneConfirmed ?? false}, plus_one_name = ${f.plusOneName ?? ''},
+    UPDATE wedding_guests SET rsvp_status = ${f.rsvpStatus!}, guest_rsvp = ${f.guestRsvp!}, partner_rsvp = ${f.partnerRsvp ?? 'pending'},
+      plus_one_confirmed = ${f.plusOneConfirmed ?? false}, plus_one_name = ${f.plusOneName ?? ''},
       children_count = ${f.childrenCount ?? 0}, dietary_preference = ${f.dietaryPreference ?? 'classic'}, allergies = ${f.allergies ?? ''},
       personal_note = ${f.personalNote ?? ''}, partner_note = ${f.partnerNote ?? ''}, attending_events = ${JSON.stringify(f.attendingEvents ?? {})}::jsonb,
       updated_at = now()
@@ -209,6 +220,10 @@ export async function getGuestState(token: string): Promise<{ state: WeddingStor
   ]);
   return {
     ceremonyId: row.ceremony_id,
-    state: { config, guests: [guest], announcements: announcements.filter((a) => a.target === 'all' || guest.rsvpStatus === 'confirmed'), messages },
+    state: {
+      config, guests: [guest], announcements: announcements.filter((a) => a.target === 'all' || guest.rsvpStatus === 'confirmed'),
+      // Le salon « Témoins & surprises » est secret : seuls les témoins le reçoivent.
+      messages: isWitness(row.category) ? messages : messages.filter((m) => m.channelId !== 'temoins'),
+    },
   };
 }

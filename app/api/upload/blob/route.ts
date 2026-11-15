@@ -16,7 +16,7 @@ export async function POST(req: Request) {
         if (!UPLOAD_PATH.test(pathname)) throw new Error('Chemin de fichier invalide.');
         let inviteSlug: string | undefined;
         try { inviteSlug = JSON.parse(clientPayload || '{}').inviteSlug; } catch { /* ignoré */ }
-        const kind = pathname.startsWith('featured/') ? 'featured' : pathname.startsWith('thumbs/') ? 'thumb' : 'photo';
+        const kind = pathname.startsWith('featured/') ? 'featured' : pathname.startsWith('proofs/') ? 'proof' : pathname.startsWith('thumbs/') ? 'thumb' : 'photo';
         const auth = await authorizeUpload(req, { inviteSlug, kind });
         if (!auth.ok) throw new Error(auth.error);
         return { allowedContentTypes: [UPLOAD_CONTENT_TYPE], maximumSizeInBytes: UPLOAD_MAX_BYTES, addRandomSuffix: false };

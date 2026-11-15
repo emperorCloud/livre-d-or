@@ -2,6 +2,7 @@
 // Principe : on reconstruit les objets champ par champ à partir d'une liste blanche ; tout champ inconnu est ignoré,
 // toutes les longueurs sont bornées, les liens sont limités à http(s) et les images à notre stockage.
 import type { DietaryOption, RsvpStatus, WeddingConfig } from './types';
+import { aggregateRsvp } from './rsvp';
 
 type R<T> = { ok: true; value: T } | { ok: false; error: string };
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -15,6 +16,7 @@ const PHONE = /^[0-9+()\-.\s]{0,30}$/;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const KEY = /^[A-Za-z0-9_-]{1,40}$/;
+const RSVPS: RsvpStatus[] = ['pending', 'confirmed', 'declined'];
 export const DIETS: DietaryOption[] = ['classic', 'vegetarian', 'halal', 'kosher', 'gluten_free', 'other'];
 
 /** Lien http(s) uniquement (jamais javascript:, data:…). Retourne '' si invalide. */
@@ -28,7 +30,7 @@ export function cleanUrl(v: unknown): string {
 export interface Representative { hasRequested: boolean; name: string; contact: string; reason: string; status: 'pending' | 'approved' | 'rejected' }
 export interface GuestFields {
   greetingTitle: string; firstName: string; lastName: string; email: string; phone: string; tableNumber: string; category: string;
-  rsvpStatus: RsvpStatus; plusOneAllowed: boolean; plusOneConfirmed: boolean; plusOneName: string; childrenCount: number;
+  rsvpStatus: RsvpStatus; guestRsvp: RsvpStatus; partnerRsvp: RsvpStatus; plusOneAllowed: boolean; plusOneConfirmed: boolean; plusOneName: string; childrenCount: number;
   dietaryPreference: DietaryOption; allergies: string; personalNote: string; partnerNote: string; notes: string;
   attendingEvents: Record<string, boolean>; representative: Representative | null;
 }
@@ -58,6 +60,8 @@ export function cleanGuest(b: any, partial = false): R<Partial<GuestFields>> {
   if (w('tableNumber')) o.tableNumber = clip(b?.tableNumber, 20);
   if (w('category')) o.category = clip(b?.category, 60);
   if (w('rsvpStatus')) o.rsvpStatus = b?.rsvpStatus === 'confirmed' || b?.rsvpStatus === 'declined' ? b.rsvpStatus : 'pending';
+  if (w('guestRsvp')) o.guestRsvp = RSVPS.includes(b?.guestRsvp) ? b.guestRsvp : 'pending';
+  if (w('partnerRsvp')) o.partnerRsvp = RSVPS.includes(b?.partnerRsvp) ? b.partnerRsvp : 'pending';
   if (w('plusOneAllowed')) o.plusOneAllowed = bool(b?.plusOneAllowed);
   if (w('plusOneConfirmed')) o.plusOneConfirmed = bool(b?.plusOneConfirmed);
   if (w('plusOneName')) o.plusOneName = clip(b?.plusOneName, 80);
@@ -74,18 +78,25 @@ export function cleanGuest(b: any, partial = false): R<Partial<GuestFields>> {
   return { ok: true, value: o };
 }
 
-/** Réponse de l'invité lui-même (via son lien) : champs limités, l'accompagnant n'est possible que s'il est autorisé. */
-export function cleanGuestRsvp(b: any, plusOneAllowed: boolean): R<Partial<GuestFields>> {
-  if (b?.rsvpStatus !== 'confirmed' && b?.rsvpStatus !== 'declined') return { ok: false, error: 'Choisissez une réponse.' };
-  const declined = b.rsvpStatus === 'declined';
+/**
+ * Réponse de l'invité lui-même (via son lien). Invitation couple : CHAQUE personne doit répondre (présent ou absent) dans le même formulaire.
+ * `guestRsvp` / `partnerRsvp` donnent la réponse de chacun ; `rsvpStatus` (ancien champ) reste accepté pour une invitation individuelle.
+ */
+export function cleanGuestRsvp(b: any, couple: boolean): R<Partial<GuestFields>> {
+  const answer = (x: unknown) => (x === 'confirmed' || x === 'declined' ? (x as RsvpStatus) : null);
+  const guest = answer(b?.guestRsvp ?? b?.rsvpStatus);
+  const partner = couple ? answer(b?.partnerRsvp) : null;
+  if (!guest) return { ok: false, error: couple ? 'Indiquez votre réponse.' : 'Choisissez une réponse.' };
+  if (couple && !partner) return { ok: false, error: 'Chaque personne de l\'invitation doit répondre (présent ou absent).' };
+  const nobody = guest === 'declined' && (!couple || partner === 'declined');
   return { ok: true, value: {
-    rsvpStatus: b.rsvpStatus,
-    plusOneConfirmed: !declined && plusOneAllowed && bool(b.plusOneConfirmed),
-    plusOneName: !declined && plusOneAllowed && bool(b.plusOneConfirmed) ? clip(b.plusOneName, 80) : '',
-    childrenCount: declined ? 0 : int(b.childrenCount, 0, 20, 0),
+    guestRsvp: guest, partnerRsvp: couple ? partner! : 'pending', rsvpStatus: aggregateRsvp(guest, couple ? partner! : 'pending', couple),
+    plusOneConfirmed: couple && partner === 'confirmed',
+    plusOneName: couple ? clip(b.plusOneName, 80) : '',
+    childrenCount: nobody ? 0 : int(b.childrenCount, 0, 20, 0),
     dietaryPreference: DIETS.includes(b.dietaryPreference) ? b.dietaryPreference : 'classic',
-    allergies: clip(b.allergies, 200), personalNote: clip(b.personalNote, 600), partnerNote: clip(b.partnerNote, 600),
-    attendingEvents: declined ? {} : cleanAttendingEvents(b.attendingEvents),
+    allergies: clip(b.allergies, 200), personalNote: clip(b.personalNote, 600), partnerNote: couple ? clip(b.partnerNote, 600) : '',
+    attendingEvents: nobody ? {} : cleanAttendingEvents(b.attendingEvents),
   } };
 }
 

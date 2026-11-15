@@ -41,7 +41,7 @@ export function exportGuestsToCsv(guests: Guest[], config: WeddingConfig) {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
   const rows = guests.map((g) => {
-    const personalUrl = g.inviteToken ? `${origin}/inv/${g.inviteToken}#billet` : '';
+    const personalUrl = g.inviteToken ? `${origin}/inv/${g.inviteToken}` : '';
     return [
       g.qrCodeToken,
       `"${g.lastName.replace(/"/g, '""')}"`,
@@ -49,7 +49,7 @@ export function exportGuestsToCsv(guests: Guest[], config: WeddingConfig) {
       `"${g.category}"`,
       `"${g.tableNumber.replace(/"/g, '""')}"`,
       `"${rsvpLabels[g.rsvpStatus] || g.rsvpStatus}"`,
-      g.plusOneConfirmed ? 'Oui' : (g.plusOneAllowed ? 'Autorisé (Non confirmé)' : 'Non'),
+      g.plusOneAllowed ? `Couple : ${g.guestRsvp === 'confirmed' ? 'invité présent' : g.guestRsvp === 'declined' ? 'invité absent' : 'invité sans réponse'} / ${g.partnerRsvp === 'confirmed' ? 'conjoint présent' : g.partnerRsvp === 'declined' ? 'conjoint absent' : 'conjoint sans réponse'}` : 'Non',
       `"${(g.plusOneName || '').replace(/"/g, '""')}"`,
       g.childrenCount,
       `"${dietaryLabels[g.dietaryPreference] || g.dietaryPreference}"`,
