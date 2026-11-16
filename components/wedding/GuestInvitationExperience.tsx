@@ -56,18 +56,29 @@ interface GuestInvitationExperienceProps {
 
 export type GuestActiveTab = 'grand_jour' | 'programme' | 'story' | 'gifts' | 'infos' | 'billet' | 'rsvp';
 
-/** Compte à rebours discret : calculé côté navigateur (évite tout écart d'hydratation). */
-function DaysToGo({ date }: { date: string }) {
-  const [days, setDays] = useState<number | null>(null);
+/** Compte à rebours en direct (jours, heures, minutes, secondes). Calculé côté navigateur : aucun écart d'hydratation. */
+function Countdown({ date }: { date: string }) {
+  const [left, setLeft] = useState<number | null>(null);
   useEffect(() => {
-    const d = new Date(date); if (Number.isNaN(d.getTime())) return;
-    const t0 = new Date(); t0.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
-    setDays(Math.round((d.getTime() - t0.getTime()) / 86_400_000));
+    const target = new Date(date).getTime();
+    if (Number.isNaN(target)) return;
+    const tick = () => setLeft(target - Date.now());
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
   }, [date]);
-  if (days === null || days < 0) return null;
+  if (left === null) return null;
+  if (left <= 0) return <p className="font-serif text-2xl italic text-[#A94566]">C’est le grand jour !</p>;
+  const d = Math.floor(left / 86_400_000), h = Math.floor(left / 3_600_000) % 24, m = Math.floor(left / 60_000) % 60, sec = Math.floor(left / 1000) % 60;
+  const cell = (v: number, label: string) => (
+    <div className="flex-1 min-w-0 px-1"><div className="font-serif text-4xl sm:text-5xl font-medium text-[#A94566] tabular-nums">{String(v).padStart(2, '0')}</div><div className="text-[10px] sm:text-xs tracking-widest uppercase text-[#8C7480] mt-1">{label}</div></div>
+  );
   return (
-    <div className="inline-flex items-baseline gap-2 px-5 py-2 rounded-full bg-white/80 border border-[#F6DCE4] text-[#A94566]">
-      {days === 0 ? <span className="font-serif text-xl">C’est aujourd’hui !</span> : <><span className="font-serif text-3xl font-semibold">{days}</span><span className="text-xs tracking-widest uppercase">jour{days > 1 ? 's' : ''} avant le grand jour</span></>}
+    <div className="space-y-3">
+      <p className="font-serif text-xl sm:text-2xl italic text-[#7C6470]">Avant de célébrer ensemble</p>
+      <div className="flex items-start justify-center divide-x divide-[#F3D0DB] max-w-md mx-auto" role="timer" aria-label="Temps restant avant le mariage">
+        {cell(d, d > 1 ? 'Jours' : 'Jour')}{cell(h, 'Heures')}{cell(m, 'Min')}{cell(sec, 'Sec')}
+      </div>
     </div>
   );
 }
@@ -178,102 +189,33 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
 
   return (
     <div className="min-h-screen bg-[#FFF7F9] text-[#4A2F38] font-sans">
-      {/* Guest Navigation Header matching screenshot */}
-      <header className="sticky top-0 z-30 bg-[#FFF7F9]/95 backdrop-blur-md border-b border-[#F6DCE4] transition-all no-print">
-        {/* Top 5 numbered tabs bar */}
-        <div className="max-w-6xl mx-auto px-4 pt-2.5 pb-1 flex justify-center overflow-x-auto scrollbar-none">
-          <nav className="flex items-center gap-6 sm:gap-10 text-[11px] sm:text-xs tracking-wider uppercase font-medium text-[#9A8490]">
-            <button
-              onClick={() => setActiveTab('grand_jour')}
-              className={`pb-1 transition cursor-pointer flex items-center gap-1 ${
-                activeTab === 'grand_jour'
-                  ? 'text-[#B04C6B] font-bold border-b-2 border-[#B04C6B]'
-                  : 'hover:text-[#4A2F38]'
-              }`}
-            >
-              <span>LE GRAND JOUR</span>
+      {/* En-tête : noms des mariés, annonces et discussions ; les onglets dessous. Les actions Réponse / Billet sont en barre fixe en bas. */}
+      <header className="sticky top-0 z-30 bg-[#FFF7F9]/95 backdrop-blur-md border-b border-[#F6DCE4] no-print">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+          <span className="font-script text-3xl text-[#A94566] truncate leading-none pt-1">{config.coupleNames}</span>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setIsAnnouncementsModalOpen(true)} className="relative p-2.5 sm:px-3 sm:py-1.5 text-xs font-medium text-[#7C6470] hover:bg-[#FBE9EE] rounded-full transition flex items-center gap-1.5 cursor-pointer" title="Annonces des mariés" aria-label="Annonces des mariés">
+              <Bell className="w-4 h-4 text-[#C65E7E]" /><span className="hidden sm:inline">Annonces</span>
+              {announcements.length > 0 && <span className="absolute top-1 right-1 sm:static min-w-4 h-4 px-1 rounded-full bg-[#C65E7E] text-white text-[9px] font-bold flex items-center justify-center">{announcements.length}</span>}
             </button>
-
-            <button
-              onClick={() => setActiveTab('programme')}
-              className={`pb-1 transition cursor-pointer flex items-center gap-1 ${
-                activeTab === 'programme'
-                  ? 'text-[#B04C6B] font-bold border-b-2 border-[#B04C6B]'
-                  : 'hover:text-[#4A2F38]'
-              }`}
-            >
-              <span>PROGRAMME</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('story')}
-              className={`pb-1 transition cursor-pointer flex items-center gap-1 ${
-                activeTab === 'story'
-                  ? 'text-[#B04C6B] font-bold border-b-2 border-[#B04C6B]'
-                  : 'hover:text-[#4A2F38]'
-              }`}
-            >
-              <span>NOTRE HISTOIRE</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('gifts')}
-              className={`pb-1 transition cursor-pointer flex items-center gap-1 ${
-                activeTab === 'gifts'
-                  ? 'text-[#B04C6B] font-bold border-b-2 border-[#B04C6B]'
-                  : 'hover:text-[#4A2F38]'
-              }`}
-            >
-              <span>CADEAUX</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('infos')}
-              className={`pb-1 transition cursor-pointer flex items-center gap-1 ${
-                activeTab === 'infos'
-                  ? 'text-[#B04C6B] font-bold border-b-2 border-[#B04C6B]'
-                  : 'hover:text-[#4A2F38]'
-              }`}
-            >
-              <span>INFOS</span>
-            </button>
-          </nav>
-        </div>
-
-        {/* Barre secondaire : nom de l'invité, annonces, discussion, et les deux actions — la RÉPONSE d'abord */}
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-t border-[#FBE9EE]">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="font-serif text-base sm:text-lg font-medium text-[#5E4450] truncate">{guestDisplayName}</div>
-            <div className="flex items-center gap-1 pl-2 border-l border-[#F3D0DB]">
-              <button onClick={() => setIsAnnouncementsModalOpen(true)} className="relative p-2 sm:px-2.5 sm:py-1 text-[11px] font-medium text-[#7C6470] hover:text-[#4A2F38] hover:bg-[#FBE9EE] rounded-full transition flex items-center gap-1 cursor-pointer" title="Annonces des mariés" aria-label="Annonces des mariés">
-                <Bell className="w-3.5 h-3.5 text-[#C65E7E]" /><span className="hidden sm:inline">Annonces</span>
-                {announcements.length > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-[#C65E7E] text-white text-[9px] font-bold flex items-center justify-center">{announcements.length}</span>}
-              </button>
-              <button onClick={openChat} className="relative p-2 sm:px-2.5 sm:py-1 text-[11px] font-medium text-[#7C6470] hover:text-[#4A2F38] hover:bg-[#FBE9EE] rounded-full transition flex items-center gap-1 cursor-pointer" title="Discussions : covoiturage et hébergement" aria-label="Discussions : covoiturage et hébergement">
-                <MessageSquare className="w-3.5 h-3.5 text-[#C65E7E]" /><span className="hidden sm:inline">Discussions</span>
-                {unreadChat > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-[#C65E7E] text-white text-[9px] font-bold flex items-center justify-center">{unreadChat}</span>}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Réponse : action principale tant qu'elle n'est pas donnée */}
-            <button onClick={() => setActiveTab('rsvp')}
-              className={`px-4 py-2 rounded-full text-xs font-bold tracking-wide transition cursor-pointer uppercase flex items-center gap-1.5 ${
-                !answered ? 'bg-[#C65E7E] text-white shadow-md hover:bg-[#B04C6B] ring-2 ring-[#C65E7E]/25' : activeTab === 'rsvp' ? 'bg-[#8E3F58] text-white' : 'bg-transparent border border-[#E3B5C3] text-[#5E4450] hover:bg-[#FDEBF0]'}`}>
-              {!answered && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-              {answered && <Check className="w-3.5 h-3.5" />}
-              <span>{!answered ? 'Répondre' : 'Ma réponse'}</span>
-            </button>
-            {/* Billet : verrouillé tant qu'aucune présence n'est confirmée */}
-            <button onClick={() => setActiveTab('billet')} title={ticketReady ? 'Mon billet d’accès' : 'Disponible après votre réponse'}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition cursor-pointer uppercase flex items-center gap-1.5 ${
-                ticketReady ? (activeTab === 'billet' ? 'bg-[#C65E7E] text-white ring-2 ring-[#C65E7E]/30' : 'bg-[#C65E7E] text-white hover:bg-[#A94566]') : 'bg-transparent border border-dashed border-[#E3B5C3] text-[#B8A3AD] hover:bg-[#FDEBF0]'}`}>
-              {ticketReady ? <span>Mon billet</span> : <><Lock className="w-3 h-3" /><span>Billet</span></>}
-              {ticketReady && currentGuest.isCheckedIn && <span className="w-2 h-2 rounded-full bg-emerald-300" />}
+            <button onClick={openChat} className="relative p-2.5 sm:px-3 sm:py-1.5 text-xs font-medium text-[#7C6470] hover:bg-[#FBE9EE] rounded-full transition flex items-center gap-1.5 cursor-pointer" title="Discussions : covoiturage et hébergement" aria-label="Discussions : covoiturage et hébergement">
+              <MessageSquare className="w-4 h-4 text-[#C65E7E]" /><span className="hidden sm:inline">Discussions</span>
+              {unreadChat > 0 && <span className="absolute top-1 right-1 sm:static min-w-4 h-4 px-1 rounded-full bg-[#C65E7E] text-white text-[9px] font-bold flex items-center justify-center">{unreadChat}</span>}
             </button>
           </div>
         </div>
+        <nav aria-label="Sections de l’invitation" className="overflow-x-auto scrollbar-none px-3 pb-2.5">
+          <ul className="flex items-center gap-1.5 w-max mx-auto">
+            {([['grand_jour', 'Le grand jour'], ['programme', 'Programme'], ['story', 'Notre histoire'], ['gifts', 'Cadeaux'], ['infos', 'Infos']] as [GuestActiveTab, string][]).map(([id, label]) => (
+              <li key={id}>
+                <button onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-[11px] sm:text-xs uppercase tracking-wider font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#C65E7E]/50 transition cursor-pointer ${activeTab === id ? 'bg-[#C65E7E] text-white shadow-sm' : 'text-[#7C6470] hover:bg-[#FBE9EE]'}`}>
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         {/* Live Announcement Banner if recent announcements exist */}
         {announcements.length > 0 && (
@@ -299,37 +241,50 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
       </header>
 
       {/* Main Content Areas */}
-      <main className="pb-24">
+      <main className="pb-44">
         {/* ============================================================== */}
         {/* TAB 01: LE GRAND JOUR                                          */}
         {/* ============================================================== */}
         {activeTab === 'grand_jour' && (
           <div className="space-y-12">
-            {/* Accueil : épuré, centré, fleuri */}
-            <section className="relative overflow-hidden bg-gradient-to-b from-[#FFE4EB] via-[#FFF0F4] to-[#FFF7F9]">
-              <FloralCorner className="pointer-events-none absolute -top-8 -left-10 w-52 sm:w-80" />
-              <FloralCorner className="pointer-events-none absolute -top-8 -right-10 w-52 sm:w-80 scale-x-[-1]" />
-              <FloralCorner className="pointer-events-none absolute -bottom-14 -left-12 w-40 sm:w-64 scale-y-[-1] opacity-80" />
-              <FloralCorner className="pointer-events-none absolute -bottom-14 -right-12 w-40 sm:w-64 scale-[-1] opacity-80" />
-
-              <div className="relative z-10 max-w-2xl mx-auto px-6 pt-24 pb-28 sm:pt-32 sm:pb-36 text-center space-y-6">
-                <p className="text-[11px] tracking-[0.4em] uppercase text-[#B04C6B] font-semibold">Nous nous marions</p>
-                {config.heroImageUrl && (
-                  <div className="mx-auto w-40 h-52 sm:w-48 sm:h-60 rounded-t-full rounded-b-3xl overflow-hidden ring-4 ring-white shadow-xl shadow-[#C65E7E]/20">
-                    <img src={config.heroImageUrl} alt={config.coupleNames} className="w-full h-full object-cover object-[center_30%]" />
+            {/* Accueil : photo des mariés plein cadre, fondue dans le rose, avec les fleurs */}
+            <section className="relative overflow-hidden bg-[#FFF0F4]">
+              {config.heroImageUrl ? (
+                <div className="relative h-[82vh] min-h-[480px] max-h-[780px]">
+                  <img src={config.heroImageUrl} alt={config.coupleNames} className="absolute inset-0 w-full h-full object-cover object-[center_25%]" />
+                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#FFF0F4] via-[#FFF0F4]/85 to-transparent" />
+                  <FloralCorner className="pointer-events-none absolute -top-6 -left-8 w-40 sm:w-72" />
+                  <FloralCorner className="pointer-events-none absolute -top-6 -right-8 w-40 sm:w-72 scale-x-[-1]" />
+                  <div className="absolute inset-x-0 bottom-0 px-6 pb-12 sm:pb-16 text-center space-y-3">
+                    <p className="text-[11px] tracking-[0.4em] uppercase font-semibold text-[#B04C6B]">Nous nous marions</p>
+                    <h1 className="font-script text-6xl sm:text-8xl text-[#A94566] leading-[1.05]">{config.coupleNames}</h1>
+                    <p className="text-sm sm:text-base tracking-wide text-[#6E5560]">{formatEventDate(config.eventDate)}{config.venueCity ? ` · ${config.venueCity}` : ''}</p>
                   </div>
-                )}
-                <h1 className="font-script text-6xl sm:text-8xl text-[#A94566] leading-[1.05]">{config.coupleNames}</h1>
-                <p className="text-sm sm:text-base tracking-wide text-[#6E5560]">{formatEventDate(config.eventDate)}{config.venueCity ? ` · ${config.venueCity}` : ''}</p>
+                </div>
+              ) : (
+                <div className="relative bg-gradient-to-b from-[#FFE4EB] via-[#FFF0F4] to-[#FFF0F4]">
+                  <FloralCorner className="pointer-events-none absolute -top-8 -left-10 w-52 sm:w-80" />
+                  <FloralCorner className="pointer-events-none absolute -top-8 -right-10 w-52 sm:w-80 scale-x-[-1]" />
+                  <div className="relative z-10 max-w-2xl mx-auto px-6 pt-28 pb-16 text-center space-y-5">
+                    <p className="text-[11px] tracking-[0.4em] uppercase font-semibold text-[#B04C6B]">Nous nous marions</p>
+                    <h1 className="font-script text-6xl sm:text-8xl text-[#A94566] leading-[1.05]">{config.coupleNames}</h1>
+                    <p className="text-sm sm:text-base tracking-wide text-[#6E5560]">{formatEventDate(config.eventDate)}{config.venueCity ? ` · ${config.venueCity}` : ''}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="relative max-w-2xl mx-auto px-6 pt-2 pb-24 text-center space-y-6">
                 <FloralDivider className="w-52 sm:w-64 mx-auto" />
                 {config.storyQuote && <p className="font-serif text-xl sm:text-2xl italic text-[#7C6470] max-w-xl mx-auto leading-snug">« {config.storyQuote} »</p>}
-                <DaysToGo date={config.eventDate} />
+                <Countdown date={config.eventDate} />
               </div>
+              <FloralCorner className="pointer-events-none absolute -bottom-14 -left-12 w-40 sm:w-64 scale-y-[-1] opacity-80" />
+              <FloralCorner className="pointer-events-none absolute -bottom-14 -right-12 w-40 sm:w-64 scale-[-1] opacity-80" />
             </section>
 
             {/* Rien que pour vous : la réponse d'abord */}
-            <section className="relative z-10 -mt-24 sm:-mt-28 px-4">
-              <div className="max-w-md mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#C65E7E]/10 border border-[#F6DCE4] space-y-4 text-center">
+            <section className="relative z-10 -mt-16 px-4">
+              <div className="max-w-md mx-auto bg-white rounded-3xl rounded-tl-[4rem] p-6 sm:p-8 shadow-xl shadow-[#C65E7E]/10 border border-[#F6DCE4] space-y-4 text-center">
                 <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C65E7E]">Rien que pour vous</div>
                 <h2 className="font-serif text-3xl font-semibold text-[#4A2F38] leading-tight">{guestDisplayName}</h2>
                 <div className="text-left"><GuestCtas guest={currentGuest} onRsvp={() => setActiveTab('rsvp')} onTicket={() => setActiveTab('billet')} onRepresentative={() => setIsRepModalOpen(true)} /></div>
@@ -1194,6 +1149,23 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
 
       {/* ============================================================== */}
       {/* MODAL: MESSAGERIE LOGISTIQUE & COVOITURAGE                     */}
+      {/* Barre fixe : Réponse (principale tant qu'elle n'est pas donnée) puis Billet (verrouillé avant confirmation) */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-[#F6DCE4] pb-[max(0.5rem,env(safe-area-inset-bottom))] no-print">
+        <div className="max-w-xl mx-auto px-4 pt-2 space-y-2">
+          <p className="text-center font-serif text-sm text-[#5E4450] truncate">{guestDisplayName}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setActiveTab('rsvp')}
+              className={`py-3 rounded-full text-xs font-bold tracking-wider uppercase transition cursor-pointer flex items-center justify-center gap-1.5 ${!answered ? 'bg-[#C65E7E] text-white shadow-md hover:bg-[#B04C6B]' : activeTab === 'rsvp' ? 'bg-[#8E3F58] text-white' : 'bg-white border border-[#E3B5C3] text-[#5E4450] hover:bg-[#FBE9EE]'}`}>
+              {!answered && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}{answered && <Check className="w-3.5 h-3.5" />}{!answered ? 'Répondre' : 'Ma réponse'}
+            </button>
+            <button onClick={() => setActiveTab('billet')} title={ticketReady ? 'Mon billet d’accès' : 'Disponible après votre réponse'}
+              className={`py-3 rounded-full text-xs font-bold tracking-wider uppercase transition cursor-pointer flex items-center justify-center gap-1.5 ${ticketReady ? 'bg-[#8E3F58] text-white hover:bg-[#7A334A]' : 'bg-white border border-dashed border-[#E3B5C3] text-[#B8A3AD] hover:bg-[#FBE9EE]'}`}>
+              {ticketReady ? <>Mon billet · QR</> : <><Lock className="w-3 h-3" />Billet</>}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <ChatSheet
         open={isChatModalOpen} onClose={() => setIsChatModalOpen(false)} messages={messages}
         currentUserName={`${currentGuest.firstName} ${currentGuest.lastName}`.trim() || currentGuest.greetingTitle || 'Invité'}

@@ -114,12 +114,16 @@ export function configureMusicSettings(track: string, url?: string) {
 
   if (isPlaying) {
     pauseWeddingMusic();
-    startWeddingMusic();
+    void startWeddingMusic();
   }
 }
 
-export function startWeddingMusic() {
-  if (isPlaying) return;
+/**
+ * Démarre la musique. Renvoie false si le navigateur refuse (aucun geste de l'utilisateur pour l'instant) :
+ * l'état « en lecture » n'est alors PAS affiché à tort.
+ */
+export async function startWeddingMusic(): Promise<boolean> {
+  if (isPlaying) return true;
 
   if ((currentTrack === 'custom' || currentTrack === 'uploaded') && customUrl) {
     if (!customAudioElement) {
@@ -128,16 +132,35 @@ export function startWeddingMusic() {
     } else if (customAudioElement.src !== customUrl) {
       customAudioElement.src = customUrl;
     }
-    customAudioElement.play().catch(console.warn);
+    try { await customAudioElement.play(); } catch { return false; }
     isPlaying = true;
     notifyListeners();
-    return;
+    return true;
   }
 
   const ctx = getAudioContext();
+  try { await ctx.resume(); } catch { /* refusé : voir état ci-dessous */ }
+  if (ctx.state !== 'running') return false;
   isPlaying = true;
   notifyListeners();
   scheduleNextMeasure();
+  return true;
+}
+
+/**
+ * Lance la musique dès l'ouverture de l'invitation. Les navigateurs interdisent le son sans geste de l'utilisateur :
+ * si le démarrage direct est refusé, la musique part au tout premier toucher / clic / touche (écouteurs retirés ensuite).
+ * Renvoie la fonction de nettoyage.
+ */
+export function autoPlayWeddingMusic(): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+  const events = ['pointerdown', 'touchend', 'click', 'keydown'] as const;
+  let armed = true;
+  const disarm = () => { armed = false; events.forEach((e) => window.removeEventListener(e, onGesture, true)); };
+  const onGesture = () => { if (!armed) return; void startWeddingMusic().then((ok) => { if (ok) disarm(); }); };
+  void startWeddingMusic().then((ok) => { if (ok) disarm(); });
+  events.forEach((e) => window.addEventListener(e, onGesture, true));
+  return disarm;
 }
 
 export function pauseWeddingMusic() {
@@ -156,7 +179,7 @@ export function toggleWeddingMusic() {
   if (isPlaying) {
     pauseWeddingMusic();
   } else {
-    startWeddingMusic();
+    void startWeddingMusic();
   }
 }
 
