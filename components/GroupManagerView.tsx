@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import WeddingOrganizer from './WeddingOrganizer';
 import ProgrammeOrganizer from './funeral/ProgrammeOrganizer';
 import { useToasts } from './Toasts';
-import { ArrowLeft, BookOpen, Check, Copy, ExternalLink, Pin, QrCode, Trash2, Eye, EyeOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Check, ChevronsUp, Copy, ExternalLink, GripVertical, QrCode, Trash2, Eye, EyeOff } from 'lucide-react';
+import { moveBefore, moveId, moveToTop, sortEntries } from '@/lib/entryOrder';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry, type ThemeConfig } from '@/lib/types';
 import { FONTS, PAPERS } from '@/lib/client/themeStyles';
 import { copyText, inviteUrl } from '@/lib/client/links';
@@ -15,11 +16,12 @@ interface Props {
   onBack?: () => void; // présent = vue ouverte par l'administrateur
   onSave: (patch: Partial<Group>) => Promise<void>;
   onModerate: (id: string, patch: { isPinned?: boolean; isApproved?: boolean }) => Promise<void>;
+  onReorder: (groupId: string, ids: string[]) => Promise<void>;
   onDeleteEntry: (e: GuestEntry) => Promise<void>;
   onQr: () => void; onPdf: () => void;
 }
 
-export default function GroupManagerView({ ceremony, group, entries, onBack, onSave, onModerate, onDeleteEntry, onQr, onPdf }: Props) {
+export default function GroupManagerView({ ceremony, group, entries, onBack, onSave, onModerate, onReorder, onDeleteEntry, onQr, onPdf }: Props) {
   const [draft, setDraft] = useState<Group>(group);
   const [busy, setBusy] = useState(false);
   const { push: toast, node: toasts } = useToasts();
@@ -35,7 +37,16 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
   const overrides = (draft.themeOverrides || {}) as Partial<ThemeConfig>;
   const setOverride = (k: 'fontStyle' | 'paperTexture', v: string) => patch({ themeOverrides: { ...overrides, [k]: v } as Partial<ThemeConfig> });
   const url = typeof window === 'undefined' ? '' : inviteUrl(group.inviteSlug);
-  const mine = entries.filter((e) => e.groupId === group.id);
+  // Les messages dans l'ORDRE DU LIVRE (même règle que le PDF : lib/entryOrder.ts).
+  const mine = sortEntries(entries.filter((e) => e.groupId === group.id));
+  const ids = mine.map((e) => e.id);
+  const bookNumber = new Map(mine.filter((e) => e.isApproved !== false).map((e, i) => [e.id, i + 1] as const));
+  const someRanked = mine.some((e) => e.sortOrder != null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [lastMoved, setLastMoved] = useState<string | null>(null);
+  const reorder = (next: string[], movedId: string) => { if (next === ids || next.join() === ids.join()) return; setLastMoved(movedId); void onReorder(group.id, next); };
+  useEffect(() => { if (lastMoved) document.getElementById(`msg-${lastMoved}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [lastMoved, entries]);
   const photos = mine.reduce((n, e) => n + getEntryPhotos(e).length, 0);
 
   const save = async () => {
@@ -130,20 +141,40 @@ export default function GroupManagerView({ ceremony, group, entries, onBack, onS
       <section className={section}>
         <h2 className={title}>Messages reçus ({mine.length})</h2>
         {mine.length === 0 && <p className="text-xs text-stone-500">Aucun message pour le moment. Partagez le lien d'invitation !</p>}
+        {mine.length > 1 && (
+          <p className="text-xs text-stone-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            <b>Ordre du livre :</b> le livre PDF (messages, sommaire, pages) suit exactement l'ordre ci-dessous. Montez ou descendez un message avec les flèches, placez-le <b>en premier</b>, ou glissez-le (ordinateur). Les nouveaux messages arrivent en bas.
+          </p>
+        )}
         <ul className="divide-y divide-stone-100">
-          {mine.map((e) => {
+          {mine.map((e, idx) => {
             const n = getEntryPhotos(e).length;
+            const isNew = someRanked && e.sortOrder == null;
             return (
-              <li key={e.id} className={`py-3 flex flex-wrap items-start justify-between gap-3 ${e.isApproved === false ? 'opacity-60' : ''}`}>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold">{e.firstName} {e.lastName} <span className="text-xs font-normal text-stone-500">· {e.relationship}</span>
-                    {e.isPinned && <Pin className="inline w-3 h-3 ml-1 text-amber-700" />}{e.isApproved === false && <span className="ml-2 text-[10px] uppercase bg-stone-200 px-1.5 py-0.5 rounded-full">Masqué du livre</span>}
+              <li key={e.id} id={`msg-${e.id}`}
+                draggable onDragStart={(ev) => { setDragId(e.id); ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', e.id); }}
+                onDragOver={(ev) => { if (dragId && dragId !== e.id) { ev.preventDefault(); setOverId(e.id); } }}
+                onDrop={(ev) => { ev.preventDefault(); if (dragId) reorder(moveBefore(ids, dragId, e.id), dragId); setDragId(null); setOverId(null); }}
+                onDragEnd={() => { setDragId(null); setOverId(null); }}
+                className={`py-3 flex flex-wrap items-start justify-between gap-3 transition ${e.isApproved === false ? 'opacity-60' : ''} ${dragId === e.id ? 'opacity-40' : ''} ${overId === e.id ? 'border-t-2 border-amber-500' : ''}`}>
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                  <div className="flex flex-col items-center pt-0.5 w-7 shrink-0 text-stone-400 cursor-grab active:cursor-grabbing" title="Glisser pour déplacer">
+                    <GripVertical className="w-4 h-4 hidden sm:block" aria-hidden="true" />
+                    <span className="text-xs font-bold text-stone-700 tabular-nums" aria-label={bookNumber.has(e.id) ? `Position ${bookNumber.get(e.id)} dans le livre` : 'Hors du livre'}>{bookNumber.get(e.id) ?? '–'}</span>
                   </div>
-                  <p className="text-xs text-stone-600 line-clamp-2 mt-0.5">{e.message}</p>
-                  {n > 0 && <p className="text-[11px] text-stone-400 mt-0.5">{n} photo{n > 1 ? 's' : ''}</p>}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold">{e.firstName} {e.lastName} <span className="text-xs font-normal text-stone-500">· {e.relationship}</span>
+                      {isNew && <span className="ml-2 text-[10px] uppercase bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded-full font-semibold">Nouveau</span>}
+                      {e.isApproved === false && <span className="ml-2 text-[10px] uppercase bg-stone-200 px-1.5 py-0.5 rounded-full">Retiré du livre</span>}
+                    </div>
+                    <p className="text-xs text-stone-600 line-clamp-2 mt-0.5">{e.message}</p>
+                    {n > 0 && <p className="text-[11px] text-stone-400 mt-0.5">{n} photo{n > 1 ? 's' : ''}</p>}
+                  </div>
                 </div>
-                <div className="flex gap-1.5">
-                  <button className={btnGhost} title={e.isPinned ? 'Désépingler' : 'Épingler en tête du livre'} onClick={() => onModerate(e.id, { isPinned: !e.isPinned })}><Pin className="w-3.5 h-3.5" /></button>
+                <div className="flex flex-wrap gap-1.5">
+                  <button className={btnGhost} disabled={idx === 0} aria-label="Mettre en premier" title="Mettre en premier dans le livre" onClick={() => reorder(moveToTop(ids, e.id), e.id)}><ChevronsUp className="w-3.5 h-3.5" /></button>
+                  <button className={btnGhost} disabled={idx === 0} aria-label="Monter d'un rang" title="Monter d'un rang" onClick={() => reorder(moveId(ids, e.id, -1), e.id)}><ArrowUp className="w-3.5 h-3.5" /></button>
+                  <button className={btnGhost} disabled={idx === mine.length - 1} aria-label="Descendre d'un rang" title="Descendre d'un rang" onClick={() => reorder(moveId(ids, e.id, 1), e.id)}><ArrowDown className="w-3.5 h-3.5" /></button>
                   <button className={btnGhost} title={e.isApproved === false ? 'Remettre dans le livre' : 'Retirer du livre'} onClick={() => onModerate(e.id, { isApproved: e.isApproved === false })}>{e.isApproved === false ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}</button>
                   <button className={`${btnGhost} text-red-700`} title="Supprimer" onClick={() => onDeleteEntry(e)}><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>

@@ -3,7 +3,7 @@ import { getGroupIdBySlug } from './ceremonies';
 import { getProgrammeTarget } from './funeral/db';
 import { rateLimit, clientIp } from './ratelimit';
 
-export type UploadKind = 'photo' | 'thumb' | 'featured' | 'proof';
+export type UploadKind = 'photo' | 'thumb' | 'featured' | 'proof' | 'audio';
 type Result = { ok: true } | { ok: false; status: number; error: string };
 
 /**
@@ -15,7 +15,7 @@ export async function authorizeUpload(req: Request, input: { inviteSlug?: string
     return { ok: false, status: 429, error: 'Trop de téléversements, réessayez dans quelques minutes.' };
   }
   const session = await getSession();
-  if (input.kind === 'featured') {
+  if (input.kind === 'featured' || input.kind === 'audio') {
     return session ? { ok: true } : { ok: false, status: 401, error: 'Accès non autorisé.' };
   }
   if (session) return { ok: true };

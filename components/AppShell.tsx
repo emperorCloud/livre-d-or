@@ -94,6 +94,11 @@ export default function AppShell({ initialSettings, initialSession }: { initialS
   const moderate = async (id: string, patch: { isPinned?: boolean; isApproved?: boolean }) => {
     try { const { entry } = await api.moderate(id, patch); setEntries((l) => l.map((e) => (e.id === id ? { ...e, ...entry } : e))); } catch (e) { fail(e); }
   };
+  const reorder = async (groupId: string, ids: string[]) => {
+    const before = entries;
+    setEntries((l) => l.map((e) => { if (e.groupId !== groupId) return e; const i = ids.indexOf(e.id); return i >= 0 ? { ...e, sortOrder: i + 1 } : e; }));
+    try { await api.reorderEntries(groupId, ids); } catch (err) { setEntries(before); fail(err); }
+  };
   const deleteEntry = async (e: GuestEntry) => {
     if (!confirm(`Supprimer le témoignage de ${e.firstName} ${e.lastName} ?`)) return;
     try { await api.deleteEntry(e.id); setEntries((l) => l.filter((x) => x.id !== e.id)); } catch (err) { fail(err); }
@@ -123,7 +128,7 @@ export default function AppShell({ initialSettings, initialSession }: { initialS
 
         {group && ceremony && (
           <GroupManagerView ceremony={ceremony} group={group} entries={entries} onBack={session.role === 'admin' ? () => setOpenGroupId(null) : undefined}
-            onSave={(p) => saveGroup(group, p)} onModerate={moderate} onDeleteEntry={deleteEntry}
+            onSave={(p) => saveGroup(group, p)} onModerate={moderate} onReorder={reorder} onDeleteEntry={deleteEntry}
             onQr={() => setModal({ kind: 'qr', group, ceremony })} onPdf={() => setModal({ kind: 'pdf', ceremony, groupId: group.id })} />
         )}
       </div>

@@ -159,3 +159,11 @@ Avec la formule « Les deux », la page livre d'or (`/i/<lien>`) affiche un bout
 | Billet | Réservé à ceux qui ont confirmé : le serveur n'envoie **pas** le code QR tant qu'aucune personne ne vient. |
 | Lien d'invitation | Ouvre la page d'invitation, plus directement le billet (liens copiés, WhatsApp, export CSV). |
 | Salon « Témoins & surprises » | Invisible et inaccessible (lecture et écriture) pour les invités qui ne sont pas de catégorie « Témoins ». |
+
+---
+
+# Livre d'or — ordre manuel des messages (migration 009)
+
+1. **Neon → SQL Editor** : exécuter `lib/migrations/009_ordre_messages.sql` (additif, rejouable) **avant** de déployer. Les messages « épinglés » deviennent les premiers du livre, dans leur ordre actuel.
+2. Dans l'espace du responsable (ou de l'administrateur, groupe ouvert), la liste « Messages reçus » est désormais **dans l'ordre du livre** : flèches monter / descendre, « mettre en premier », glisser-déposer (ordinateur). Les nouveaux messages arrivent en bas.
+3. Le livre PDF suit exactement cet ordre : messages, sommaire, pagination et numérotation. Pour plusieurs groupes, l'ordre des groupes puis celui des messages de chaque groupe.

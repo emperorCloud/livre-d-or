@@ -25,10 +25,9 @@ export async function generateBook(entries: GuestEntry[], options: PdfBookOption
   const { BookDocument } = await import('./BookDocument');
   const fonts = await setupFonts(Font);
 
-  // 1. Témoignages approuvés : épinglés d'abord, puis par date.
-  const approved = entries
-    .filter((e) => e.isApproved !== false)
-    .sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned) || new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+  // 1. Témoignages approuvés, DANS L'ORDRE REÇU : l'appelant fournit l'ordre du livre (lib/entryOrder.ts). Le sommaire,
+  //    la pagination et la numérotation en découlent : modifier l'ordre des messages modifie tout le livre.
+  const approved = entries.filter((e) => e.isApproved !== false);
 
   // 2. Dimensions de chaque photo (connues en base ; sinon mesurées une seule fois).
   say(8, 'Analyse des photos…');

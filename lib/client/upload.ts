@@ -75,3 +75,30 @@ export async function uploadItineraryImage(file: File): Promise<string> {
   const p = await processItinerary(file);
   return uploadJpeg(p.full, 'featured');
 }
+
+const AUDIO_EXT: Record<string, string> = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', wav: 'audio/wav' };
+const AUDIO_MIME_TO_EXT: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a', 'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav' };
+export const AUDIO_MAX_MB = 12;
+
+/** Envoie la musique de l'invitation (MP3, M4A, AAC, OGG ou WAV, 12 Mo maximum) et renvoie son lien public. */
+export async function uploadWeddingAudio(file: File): Promise<string> {
+  const fromName = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const ext = AUDIO_MIME_TO_EXT[file.type] ?? (AUDIO_EXT[fromName] ? fromName : '');
+  if (!ext) throw new Error('Format non pris en charge. Envoyez un fichier MP3, M4A, AAC, OGG ou WAV.');
+  if (file.size > AUDIO_MAX_MB * 1_000_000) throw new Error(`Fichier trop lourd (${(file.size / 1_000_000).toFixed(1)} Mo). Maximum ${AUDIO_MAX_MB} Mo : compressez le morceau en MP3 (128 kb/s suffit).`);
+  const contentType = AUDIO_EXT[ext];
+  const { driver } = await getUploadConfig();
+  return withRetry(async () => {
+    if (driver === 'r2') {
+      const sign = await fetch('/api/upload/r2', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'audio', contentType }) });
+      const data = await sign.json();
+      if (!sign.ok) throw new Error(data.error || 'Téléversement refusé.');
+      const put = await fetch(data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file });
+      if (!put.ok) throw new Error("Échec de l'envoi du fichier audio.");
+      return data.publicUrl as string;
+    }
+    const { upload } = await import('@vercel/blob/client');
+    const res = await upload(`audio/${crypto.randomUUID()}.${ext}`, file, { access: 'public', handleUploadUrl: '/api/upload/blob', contentType, multipart: file.size > 5_000_000 });
+    return res.url;
+  });
+}

@@ -40,6 +40,8 @@ export interface GuestEntry {
   updatedAt: string;
   likesCount: number;
   isPinned: boolean;
+  /** Position choisie par le responsable (1 = premier du livre) ; null = non classé. Voir lib/entryOrder.ts. */
+  sortOrder?: number | null;
   isApproved: boolean;
   reactions: Record<string, number>;
 }

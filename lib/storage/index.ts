@@ -8,6 +8,11 @@ export const UPLOAD_MAX_BYTES = 2_500_000; // image déjà redimensionnée par l
 export const UPLOAD_CONTENT_TYPE = 'image/jpeg';
 export const UPLOAD_PATH = /^(photos|thumbs|featured|proofs)\/[A-Za-z0-9_-]{8,64}\.jpg$/;
 
+// Musique de l'invitation de mariage : un morceau envoyé par les mariés (réservé aux comptes connectés).
+export const AUDIO_MAX_BYTES = 12_000_000;
+export const AUDIO_TYPES: Record<string, string> = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', wav: 'audio/wav' };
+export const AUDIO_PATH = /^audio\/[A-Za-z0-9_-]{8,64}\.(mp3|m4a|aac|ogg|wav)$/;
+
 export function activeDriver(): StorageDriver {
   return process.env.STORAGE_DRIVER === 'r2' ? 'r2' : 'blob';
 }

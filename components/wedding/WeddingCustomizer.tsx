@@ -1,5 +1,5 @@
 'use client';
-import { uploadConfigImage } from '@/lib/client/upload';
+import { uploadConfigImage, uploadWeddingAudio, AUDIO_MAX_MB } from '@/lib/client/upload';
 import React, { useState, useRef } from 'react';
 import {
   Sparkles,
@@ -210,9 +210,21 @@ export const WeddingCustomizer: React.FC<WeddingCustomizerProps> = ({
     }
   };
 
-  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.target.value = '';
-    window.alert("L'envoi d'un fichier audio n'est pas encore disponible. Choisissez un morceau de la liste, ou collez le lien (https) d'un fichier audio.");
+  const [audioBusy, setAudioBusy] = useState(false);
+  const [audioError, setAudioError] = useState('');
+  // Envoie le morceau choisi : il devient la musique de l'invitation (le titre affiché reprend le nom du fichier s'il est vide).
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    setAudioBusy(true); setAudioError('');
+    try {
+      const url = await uploadWeddingAudio(file);
+      setFormData((prev) => ({ ...prev, musicTrack: 'uploaded', customMusicUrl: url, musicTitle: prev.musicTitle && prev.musicTrack === 'uploaded' ? prev.musicTitle : file.name.replace(/\.[^.]+$/, '').slice(0, 120) }));
+    } catch (err) {
+      setAudioError(err instanceof Error ? err.message : "L'envoi du fichier audio a échoué. Réessayez.");
+    } finally { setAudioBusy(false); }
   };
 
   const addContact = () => {
@@ -1903,17 +1915,20 @@ export const WeddingCustomizer: React.FC<WeddingCustomizerProps> = ({
                     </div>
                   </div>
 
-                  <label className="cursor-pointer px-4 py-2 bg-[#1B382B] hover:bg-emerald-900 text-white font-semibold rounded-xl transition flex items-center gap-2 shadow-xs">
+                  <label className={`px-4 py-2 bg-[#1B382B] hover:bg-emerald-900 text-white font-semibold rounded-xl transition flex items-center gap-2 shadow-xs ${audioBusy ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}>
                     <Upload className="w-4 h-4" />
-                    <span>Sélectionner le fichier audio</span>
+                    <span>{audioBusy ? 'Envoi en cours…' : 'Sélectionner le fichier audio'}</span>
                     <input
                       type="file"
-                      accept="audio/*"
+                      accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav"
                       className="hidden"
+                      disabled={audioBusy}
                       onChange={handleAudioFileUpload}
                     />
                   </label>
                 </div>
+                <p className="text-[11px] text-slate-500">MP3, M4A, AAC, OGG ou WAV · {AUDIO_MAX_MB} Mo maximum (un MP3 à 128 kb/s tient environ 12 minutes). N'oubliez pas d'<b>enregistrer</b> ensuite.</p>
+                {audioError && <p role="alert" className="text-xs text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{audioError}</p>}
 
                 {formData.customMusicUrl && (
                   <div className="bg-white p-3.5 rounded-xl border border-emerald-200 flex flex-wrap items-center justify-between gap-3">

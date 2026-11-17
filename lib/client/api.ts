@@ -32,6 +32,7 @@ export const api = {
 
   entries: () => get<GuestEntry[]>('/api/entries'),
   moderate: (id: string, patch: { isPinned?: boolean; isApproved?: boolean }) => send<{ entry: GuestEntry }>('PATCH', `/api/admin/entries/${id}`, patch),
+  reorderEntries: (groupId: string, ids: string[]) => send<{ success: true; order: string[] }>('PUT', '/api/admin/entries/order', { groupId, ids }),
   deleteEntry: (id: string) => send<{ success: true }>('DELETE', `/api/admin/entries/${id}`),
 
   // invité

@@ -1,4 +1,5 @@
 'use client';
+import { sortEntriesAcrossGroups } from '@/lib/entryOrder';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, ExternalLink, Eye, Loader2 } from 'lucide-react';
 import { getEntryPhotos, type Ceremony, type Group, type GuestEntry } from '@/lib/types';
@@ -34,14 +35,15 @@ export default function BookPdfModal({ ceremony, groups, entries, defaultGroupId
 
   const selected = useMemo(() => {
     const ids = new Set(groups.filter((g) => g.ceremonyId === ceremony.id && (scope === 'all' || g.id === scope)).map((g) => g.id));
-    return entries.filter((e) => e.groupId && ids.has(e.groupId));
+    const groupOrder = groups.filter((g) => g.ceremonyId === ceremony.id).map((g) => g.id);
+    return sortEntriesAcrossGroups(entries.filter((e) => e.groupId && ids.has(e.groupId)), groupOrder);   // ordre du livre choisi par le(s) responsable(s)
   }, [entries, groups, ceremony.id, scope]);
   const included = selected.filter((e) => e.isApproved !== false);
   const photoCount = included.reduce((n, e) => n + getEntryPhotos(e).length, 0);
   const fileName = `livre-or-${ceremony.honoreeName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\W+/g, '-').toLowerCase()}.pdf`;
 
   // Empreinte des réglages : si elle change après l'aperçu, celui-ci est « obsolète ».
-  const optionsKey = JSON.stringify([scope, theme, includePhotos, preface, closing, signature, included.map((e) => `${e.id}${e.isPinned ? '*' : ''}`)]);
+  const optionsKey = JSON.stringify([scope, theme, includePhotos, preface, closing, signature, included.map((e) => e.id)]);
   const stale = !!preview && preview.key !== optionsKey;
 
   const build = async (q: 'print' | 'screen') => {

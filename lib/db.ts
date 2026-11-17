@@ -27,6 +27,7 @@ function rowToEntry(row: any, photos: GuestPhoto[]): GuestEntry {
     updatedAt: new Date(row.updated_at).toISOString(),
     likesCount: row.likes_count,
     isPinned: row.is_pinned,
+    sortOrder: row.sort_order ?? null,
     isApproved: row.is_approved,
     reactions: row.reactions || DEFAULT_REACTIONS,
   };
@@ -49,7 +50,7 @@ async function getPhotosForEntries(entryIds: string[]): Promise<Map<string, Gues
 
 export async function getAllEntries(): Promise<GuestEntry[]> {
   const { rows } = await sql`
-    SELECT * FROM entries ORDER BY is_pinned DESC, created_at DESC
+    SELECT * FROM entries ORDER BY group_id, sort_order ASC NULLS LAST, is_pinned DESC, created_at ASC
   `;
   const photosMap = await getPhotosForEntries(rows.map((r) => r.id));
   return rows.map((r) => rowToEntry(r, photosMap.get(r.id) || []));
@@ -57,7 +58,7 @@ export async function getAllEntries(): Promise<GuestEntry[]> {
 
 export async function getEntriesByGroup(groupId: string): Promise<GuestEntry[]> {
   const { rows } = await sql`
-    SELECT * FROM entries WHERE group_id = ${groupId} ORDER BY is_pinned DESC, created_at DESC
+    SELECT * FROM entries WHERE group_id = ${groupId} ORDER BY sort_order ASC NULLS LAST, is_pinned DESC, created_at ASC
   `;
   const photosMap = await getPhotosForEntries(rows.map((r) => r.id));
   return rows.map((r) => rowToEntry(r, photosMap.get(r.id) || []));
@@ -210,6 +211,24 @@ export async function adminUpdateEntry(id: string, patch: Partial<GuestEntry>): 
   `;
 
   return getEntryById(id);
+}
+
+/**
+ * Enregistre l'ordre complet des messages d'un groupe. `ids` = ordre voulu ; les messages du groupe absents de la liste
+ * (arrivés entre-temps) gardent leur ordre actuel et viennent à la suite. Les identifiants d'un autre groupe sont ignorés.
+ */
+export async function reorderEntries(groupId: string, ids: string[]): Promise<string[]> {
+  const { rows } = await sql`SELECT id FROM entries WHERE group_id = ${groupId} ORDER BY sort_order ASC NULLS LAST, is_pinned DESC, created_at ASC`;
+  const current = rows.map((r) => r.id as string);
+  const inGroup = new Set(current);
+  const wanted = [...new Set(ids)].filter((id) => inGroup.has(id));
+  const final = [...wanted, ...current.filter((id) => !wanted.includes(id))];
+  if (final.length === 0) return [];
+  await sql.query(
+    `UPDATE entries SET sort_order = x.ord FROM unnest($1::text[]) WITH ORDINALITY AS x(id, ord) WHERE entries.id = x.id AND entries.group_id = $2`,
+    [final, groupId]
+  );
+  return final;
 }
 
 export async function adminDeleteEntry(id: string): Promise<boolean> {
