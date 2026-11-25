@@ -52,7 +52,7 @@ export default function WeddingOrganizer({ ceremony, isAdmin }: { ceremony: Cere
         )}
         {tab === 'customizer' && <WeddingCustomizer config={config} onConfigSaved={(c) => setState({ ...state, config: c })} />}
         {tab === 'checkin' && <CheckInScanner guests={guests} onGuestSelectedForView={(g) => openGuestPage(g.inviteToken)} />}
-        {tab === 'announcements' && <AnnouncementsView announcements={announcements} />}
+        {tab === 'announcements' && <AnnouncementsView announcements={announcements} coupleNames={config.coupleNames} />}
         {tab === 'chat' && <LogisticsChatView messages={messages} guests={guests} currentUserRole="organizer" currentUserName="Organisateur" layout="page" />}
       </div>
       <ExportModal isOpen={exportOpen} onClose={() => setExportOpen(false)} guests={guests} config={config} />

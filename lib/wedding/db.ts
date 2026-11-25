@@ -142,6 +142,18 @@ export async function addAnnouncement(ceremonyId: string, v: { title: string; me
   const { rows } = await sql`INSERT INTO wedding_announcements (id, ceremony_id, title, message, priority, target, author) VALUES (${'ann-' + randomUUID()}, ${ceremonyId}, ${v.title}, ${v.message}, ${v.priority}, ${v.target}, ${author}) RETURNING *`;
   return rowToAnnouncement(rows[0]);
 }
+/** Modifie une annonce du mariage (jamais celle d'un autre mariage). La date de publication d'origine est conservée. */
+export async function updateAnnouncement(ceremonyId: string, id: string, v: { title: string; message: string; priority: string; target: string; author: string }): Promise<Announcement | null> {
+  const { rows } = await sql`
+    UPDATE wedding_announcements SET title = ${v.title}, message = ${v.message}, priority = ${v.priority}, target = ${v.target},
+      author = CASE WHEN ${v.author} <> '' THEN ${v.author} ELSE author END
+    WHERE id = ${id} AND ceremony_id = ${ceremonyId} RETURNING *`;
+  return rows[0] ? rowToAnnouncement(rows[0]) : null;
+}
+export async function deleteAnnouncement(ceremonyId: string, id: string): Promise<boolean> {
+  const { rowCount } = await sql`DELETE FROM wedding_announcements WHERE id = ${id} AND ceremony_id = ${ceremonyId}`;
+  return (rowCount ?? 0) > 0;
+}
 export async function listMessages(ceremonyId: string): Promise<ChatMessage[]> {
   const { rows } = await sql`SELECT * FROM (SELECT * FROM wedding_messages WHERE ceremony_id = ${ceremonyId} ORDER BY created_at DESC LIMIT 400) m ORDER BY created_at ASC`;
   return rows.map(rowToMessage);

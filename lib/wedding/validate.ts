@@ -107,10 +107,10 @@ export function cleanRepresentativeRequest(b: any): R<Representative> {
 }
 
 // ---------- Annonces, messages, réservations ----------
-export function cleanAnnouncement(b: any): R<{ title: string; message: string; priority: 'info' | 'important' | 'urgent'; target: 'all' | 'confirmed_only' }> {
+export function cleanAnnouncement(b: any): R<{ title: string; message: string; priority: 'info' | 'important' | 'urgent'; target: 'all' | 'confirmed_only'; author: string }> {
   const title = clip(b?.title, 120), message = clip(b?.message, 1000);
   if (!title || !message) return { ok: false, error: 'Le titre et le message sont requis.' };
-  return { ok: true, value: { title, message, priority: b?.priority === 'urgent' || b?.priority === 'important' ? b.priority : 'info', target: b?.target === 'confirmed_only' ? 'confirmed_only' : 'all' } };
+  return { ok: true, value: { title, message, priority: b?.priority === 'urgent' || b?.priority === 'important' ? b.priority : 'info', target: b?.target === 'confirmed_only' ? 'confirmed_only' : 'all', author: clip(b?.author, 80) } };
 }
 export const CHANNELS = ['general', 'covoiturage', 'logement', 'temoins'] as const;
 export function cleanMessage(b: any): R<{ channelId: (typeof CHANNELS)[number]; content: string; senderName: string }> {

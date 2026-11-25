@@ -59,6 +59,12 @@ export async function undoCheckIn(guestId: string): Promise<Guest> {
 export async function postAnnouncement(data: Partial<Announcement>): Promise<Announcement> {
   const a = await call<Announcement>('POST', `/api/wedding/announcements${qs()}`, data); refresh(); return a;
 }
+export async function updateAnnouncement(id: string, data: Partial<Announcement>): Promise<Announcement> {
+  const a = await call<Announcement>('PATCH', `/api/wedding/announcements/${encodeURIComponent(id)}${qs()}`, data); refresh(); return a;
+}
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await call<{ success: true }>('DELETE', `/api/wedding/announcements/${encodeURIComponent(id)}${qs()}`); refresh();
+}
 export async function sendChatMessage(data: Partial<ChatMessage>): Promise<ChatMessage> {
   const m = await call<ChatMessage>('POST', ctx.token ? `${tokenBase()}/messages` : `/api/wedding/messages${qs()}`, data); refresh(); return m;
 }

@@ -9,46 +9,58 @@ import {
   Send,
   Sparkles,
   Users,
-  CheckCircle2
+  Pencil,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import type { Announcement } from '@/lib/wedding/types';
-import { postAnnouncement } from '@/lib/wedding/api';
+import { deleteAnnouncement, postAnnouncement, updateAnnouncement } from '@/lib/wedding/api';
+import { useToasts } from '../Toasts';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
+  coupleNames?: string;
 }
 
-export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announcements }) => {
+export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announcements, coupleNames }) => {
+  const defaultAuthor = coupleNames ? `Les mariés (${coupleNames})` : 'Les mariés';
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Announcement | null>(null); // null = nouvelle annonce
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [priority, setPriority] = useState<'info' | 'important' | 'urgent'>('important');
-  const [author, setAuthor] = useState('Les Mariés (Camille & Alexandre)');
+  const [author, setAuthor] = useState(defaultAuthor);
   const [target, setTarget] = useState<'all' | 'confirmed_only'>('all');
   const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { push, node: toasts } = useToasts();
+
+  const openNew = () => { setEditing(null); setTitle(''); setMessage(''); setPriority('important'); setAuthor(defaultAuthor); setTarget('all'); setError(''); setIsModalOpen(true); };
+  const openEdit = (a: Announcement) => { setEditing(a); setTitle(a.title); setMessage(a.message); setPriority(a.priority); setAuthor(a.author); setTarget(a.target); setError(''); setIsModalOpen(true); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
-
-    setIsSending(true);
+    setIsSending(true); setError('');
     try {
-      await postAnnouncement({
-        title: title.trim(),
-        message: message.trim(),
-        priority,
-        author: author.trim(),
-        target
-      });
-
-      setTitle('');
-      setMessage('');
+      const data = { title: title.trim(), message: message.trim(), priority, author: author.trim(), target };
+      if (editing) { await updateAnnouncement(editing.id, data); push('Annonce modifiée : les invités voient la nouvelle version.'); }
+      else { await postAnnouncement(data); push('Annonce diffusée aux invités.'); }
       setIsModalOpen(false);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "L'enregistrement a échoué. Réessayez.");
     } finally {
       setIsSending(false);
     }
+  };
+
+  const remove = async (a: Announcement) => {
+    if (!window.confirm(`Supprimer l'annonce « ${a.title} » ?\nElle disparaîtra aussi du téléphone des invités.`)) return;
+    setDeletingId(a.id);
+    try { await deleteAnnouncement(a.id); push('Annonce supprimée.'); }
+    catch (err) { push(err instanceof Error ? err.message : 'Suppression impossible.', 'error'); }
+    finally { setDeletingId(null); }
   };
 
   const getPriorityBadge = (p: 'info' | 'important' | 'urgent') => {
@@ -95,7 +107,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announceme
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={openNew}
           className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -154,6 +166,15 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announceme
               <p className="text-xs sm:text-sm text-slate-700 mt-2 leading-relaxed whitespace-pre-line">
                 {ann.message}
               </p>
+
+              <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
+                <button onClick={() => openEdit(ann)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
+                  <Pencil className="w-3.5 h-3.5" /><span>Modifier</span>
+                </button>
+                <button onClick={() => remove(ann)} disabled={deletingId === ann.id} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded-lg cursor-pointer disabled:opacity-50">
+                  {deletingId === ann.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}<span>Supprimer</span>
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -161,11 +182,11 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announceme
 
       {/* New Announcement Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white sm:rounded-2xl rounded-t-3xl max-w-lg w-full max-h-[94dvh] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-serif text-xl font-bold text-slate-900">
-                Diffuser une nouvelle notification
+                {editing ? 'Modifier l’annonce' : 'Diffuser une nouvelle notification'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -176,6 +197,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announceme
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              {error && <p role="alert" className="text-rose-800 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
               <div>
                 <label className="block text-slate-700 font-medium mb-1">Titre de la mise à jour *</label>
                 <input
@@ -251,13 +273,14 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({ announceme
                   className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{isSending ? 'Diffusion...' : 'Diffuser immédiatement'}</span>
+                  <span>{isSending ? 'Enregistrement…' : editing ? 'Enregistrer les modifications' : 'Diffuser immédiatement'}</span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+      {toasts}
     </div>
   );
 };
