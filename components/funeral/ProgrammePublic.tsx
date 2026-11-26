@@ -139,7 +139,7 @@ export default function ProgrammePublic({ initial }: { initial: PublicProgramme 
 
       <footer className="max-w-3xl mx-auto px-5 pb-10 text-center space-y-2">
         {(pr.contactPhone || pr.contactEmail) && <p className="text-sm">Contact de la famille : {pr.contactPhone && <a className="underline" href={telHref(pr.contactPhone)}>{pr.contactPhone}</a>} {pr.contactEmail && <a className="underline" href={`mailto:${pr.contactEmail}`}>{pr.contactEmail}</a>}</p>}
-        <p className={`text-[11px] ${V.muted}`}>Page publiée avec CardEvents</p>
+        <p className={`text-[11px] ${V.muted}`}>Page publiée avec CardEvents: +237 622 280 626, infos-cardevents@cardit.cm</p>
       </footer>
     </div>
   );
