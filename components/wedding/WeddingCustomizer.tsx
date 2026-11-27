@@ -577,10 +577,10 @@ export const WeddingCustomizer: React.FC<WeddingCustomizerProps> = ({
                   <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 space-y-1">
                     <div className="font-semibold text-slate-800 flex items-center justify-between">
                       <span>Dimensions conseillées :</span>
-                      <span className="font-mono text-emerald-700 font-bold">1920 × 800 px</span>
+                      <span className="font-mono text-emerald-700 font-bold">1080 × 1350 px</span>
                     </div>
                     <p className="text-[10px] text-slate-500">
-                      Ratio 21:9 ou 16:9 panoramique. Sujet décentré à droite pour laisser respirer le titre. Poids max : 4 Mo.
+                      Portrait 4:5 (ou toute autre proportion) : les invités consultent surtout sur téléphone, l'image s'affiche en entier, sans rognage. Si vous la gardez en « image seule », intégrez-y vos noms et la date. Poids max : 4 Mo.
                     </p>
                   </div>
 
@@ -601,7 +601,7 @@ export const WeddingCustomizer: React.FC<WeddingCustomizerProps> = ({
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => handleImageFileUpload(e, (url) => setFormData({ ...formData, heroImageUrl: url }))}
+                        onChange={(e) => handleImageFileUpload(e, (url) => setFormData({ ...formData, heroImageUrl: url, heroImageOnly: true }))}
                       />
                     </label>
                   </div>
@@ -613,12 +613,18 @@ export const WeddingCustomizer: React.FC<WeddingCustomizerProps> = ({
                     placeholder="Ou collez l'URL de l'image..."
                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
                   />
+                  {formData.heroImageUrl && (
+                    <label className="flex items-start gap-2 p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-700 cursor-pointer">
+                      <input type="checkbox" className="mt-0.5" checked={!!formData.heroImageOnly} onChange={(e) => setFormData({ ...formData, heroImageOnly: e.target.checked })} />
+                      <span><b>L'image remplace tout l'en-tête</b> : elle s'affiche seule en haut de la page, sans les noms, la date, la citation ni les fleurs par défaut. Décochez pour afficher ces éléments par-dessus la photo.</span>
+                    </label>
+                  )}
                   <div className="flex flex-wrap gap-1">
                     {presetPhotos.map((p, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setFormData({ ...formData, heroImageUrl: p.url })}
+                        onClick={() => setFormData({ ...formData, heroImageUrl: p.url, heroImageOnly: false })}
                         className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-200 rounded text-[10px] text-slate-600"
                       >
                         Photo {i + 1}

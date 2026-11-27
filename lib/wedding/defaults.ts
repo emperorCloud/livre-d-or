@@ -11,7 +11,7 @@ export function defaultWeddingConfig(c: { honoreeName: string; date: string; loc
   return {
     coupleNames: c.honoreeName, eventDate, eventTime: '15:00',
     venueName: '', venueAddress: '', venueCity: c.location, mapsUrl: '',
-    heroImageUrl, ticketImageUrl: '', brideImageUrl: '',
+    heroImageUrl, heroImageOnly: false, ticketImageUrl: '', brideImageUrl: '',
     dressCode: '', dressCodeColors: [],
     storyQuote: '', storyTitle: '', storyText: '', storyPhotos: [],
     timelineEvents: [], giftOptions: [], physicalGifts: [], usefulContacts: [], tablesList: [],

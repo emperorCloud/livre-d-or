@@ -153,7 +153,7 @@ export function cleanConfig(b: any, cur: WeddingConfig, deps: { isOwnedUrl: (u: 
   set('eventTime', () => (TIME.test(clip(b.eventTime, 5)) ? clip(b.eventTime, 5) : cur.eventTime));
   set('venueName', () => clip(b.venueName, 160)); set('venueAddress', () => clip(b.venueAddress, 200)); set('venueCity', () => clip(b.venueCity, 120));
   set('mapsUrl', () => cleanUrl(b.mapsUrl));
-  set('heroImageUrl', () => img(b.heroImageUrl)); set('ticketImageUrl', () => img(b.ticketImageUrl)); set('brideImageUrl', () => img(b.brideImageUrl));
+  set('heroImageUrl', () => img(b.heroImageUrl)); set('heroImageOnly', () => bool(b.heroImageOnly)); set('ticketImageUrl', () => img(b.ticketImageUrl)); set('brideImageUrl', () => img(b.brideImageUrl));
   set('dressCode', () => clip(b.dressCode, 300));
   set('dressCodeColors', () => arr(b.dressCodeColors, 12).map((x, i) => ({ id: id(x.id, `c${i}`), name: clip(x.name, 40), hex: HEX.test(clip(x.hex, 7)) ? clip(x.hex, 7) : '#cccccc' })));
   set('storyQuote', () => clip(b.storyQuote, 300)); set('storyTitle', () => clip(b.storyTitle, 120)); set('storyText', () => clip(b.storyText, 3000));

@@ -247,7 +247,17 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
         {/* ============================================================== */}
         {activeTab === 'grand_jour' && (
           <div className="space-y-12">
-            {/* Accueil : photo des mariés plein cadre, fondue dans le rose, avec les fleurs */}
+            {/* Image du héro téléversée par les mariés : elle REMPLACE tout l'en-tête par défaut (noms, date, citation, fleurs). */}
+            {config.heroImageUrl && config.heroImageOnly ? (
+              <section className="bg-[#FFF0F4]">
+                <h1 className="sr-only">{config.coupleNames}</h1>
+                <div className="flex justify-center">
+                  <img src={config.heroImageUrl} alt={`Invitation au mariage de ${config.coupleNames}`} className="block w-full sm:w-auto sm:max-h-[88vh] h-auto" />
+                </div>
+                <div className="max-w-2xl mx-auto px-6 pt-8 pb-24 text-center"><Countdown date={config.eventDate} /></div>
+              </section>
+            ) : (
+            /* Accueil par défaut : photo plein cadre fondue dans le rose, avec les fleurs */
             <section className="relative overflow-hidden bg-[#FFF0F4]">
               {config.heroImageUrl ? (
                 <div className="relative h-[82vh] min-h-[480px] max-h-[780px]">
@@ -281,6 +291,7 @@ export const GuestInvitationExperience: React.FC<GuestInvitationExperienceProps>
               <FloralCorner className="pointer-events-none absolute -bottom-14 -left-12 w-40 sm:w-64 scale-y-[-1] opacity-80" />
               <FloralCorner className="pointer-events-none absolute -bottom-14 -right-12 w-40 sm:w-64 scale-[-1] opacity-80" />
             </section>
+            )}
 
             {/* Rien que pour vous : la réponse d'abord */}
             <section className="relative z-10 -mt-16 px-4">

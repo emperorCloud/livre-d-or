@@ -147,6 +147,8 @@ export interface WeddingConfig {
   venueCity: string;
   mapsUrl: string;
   heroImageUrl: string;
+  /** true = l'image du héro REMPLACE tout l'en-tête par défaut (noms, date, citation, fleurs) ; elle s'affiche seule. */
+  heroImageOnly: boolean;
   ticketImageUrl: string;
   brideImageUrl: string;
   dressCode: string;
